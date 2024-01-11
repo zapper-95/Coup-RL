@@ -1,36 +1,36 @@
 import random
-from card import Card
+from card import Card, Ambassador, Assassin, Captain, Contessa, Duke
 
 class Deck(object):
     def __init__(self):
-        self.cards = [
-            Card("Ambassador"),
-            Card("Ambassador"),
-            Card("Ambassador"),
+        self._cards = [
+            Ambassador(),
+            Ambassador(),
+            Ambassador(),
 
-            Card("Assassin"),
-            Card("Assassin"),
-            Card("Assassin"),
+            Assassin(),
+            Assassin(),
+            Assassin(),
 
-            Card("Captain"),
-            Card("Captain"),
-            Card("Captain"),
+            Captain(),
+            Captain(),
+            Captain(),
 
-            Card("Contessa"),
-            Card("Contessa"),
-            Card("Contessa"),
+            Contessa(),
+            Contessa(),
+            Contessa(),
 
-            Card("Duke"),
-            Card("Duke"),
-            Card("Duke"),
+            Duke(),
+            Duke(),
+            Duke(),
         ]
         self.shuffle()
 
     def shuffle(self):
-        random.shuffle(self.cards)
+        random.shuffle(self._cards)
 
     def draw(self):
-        return self.cards.pop(0)
+        return self._cards.pop(0)
 
-    def add(self, card):
-        self.cards.append(card)
+    def add(self, card:Card):
+        self._cards.append(card)

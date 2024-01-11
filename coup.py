@@ -4,6 +4,7 @@ from gym import Env, spaces
 
 from deck import Deck
 from player import Player
+from action import Action, Income, ForeignAid, Coup, Tax, Assassinate, Exchange, Steal
 
 class CoupEnv(Env):
     """
@@ -42,10 +43,10 @@ class CoupEnv(Env):
             "player_2_card_1_name": spaces.Discrete(5),
             "player_1_card_2_name": spaces.Discrete(5),
             "player_2_card_2_name": spaces.Discrete(5),
-            "player_1_card_1_state": spaces.MultiBinary(2),
-            "player_2_card_1_state": spaces.MultiBinary(2),
-            "player_1_card_2_state": spaces.MultiBinary(2),
-            "player_2_card_2_state": spaces.MultiBinary(2),
+            "player_1_card_1_dead": spaces.MultiBinary(1),
+            "player_2_card_1_dead": spaces.MultiBinary(1),
+            "player_1_card_2_dead": spaces.MultiBinary(1),
+            "player_2_card_2_dead": spaces.MultiBinary(1),
             "player_1_coins": spaces.Discrete(12),
             "player_2_coins": spaces.Discrete(12),
             "player_turn": spaces.MultiBinary(1)
@@ -55,18 +56,18 @@ class CoupEnv(Env):
 
     def _get_obs(self):
         return {
-            "player_1_card_1_name": self.players[0].card_1.get_name(),
-            "player_1_card_2_name": self.players[0].card_2.get_name(),
+            "player_1_card_1_name": self.players[0].get_card_1().get_name(),
+            "player_1_card_2_name": self.players[0].get_card_2().get_name(),
 
-            "player_2_card_1_name": self.players[1].card_1.get_name(),
-            "player_2_card_2_name": self.players[1].card_2.get_name(),
+            "player_2_card_1_name": self.players[1].get_card_1().get_name(),
+            "player_2_card_2_name": self.players[1].get_card_2().get_name(),
 
-            "player_1_card_1_state": self.players[0].card_1.is_dead(),
-            "player_1_card_2_state": self.players[0].card_2.is_dead(),
+            "player_1_card_1_dead": self.players[0].get_card_1().is_dead(),
+            "player_1_card_2_dead": self.players[0].get_card_2().is_dead(),
 
             
-            "player_2_card_1_state": self.players[1].card_1.is_dead(),
-            "player_2_card_2_state": self.players[1].card_2.is_dead(),
+            "player_2_card_1_dead": self.players[1].get_card_1().is_dead(),
+            "player_2_card_2_dead": self.players[1].get_card_2().is_dead(),
 
             "player_1_coins": self.players[0].get_coins(),
             "player_2_coins": self.players[1].get_coins(),
@@ -87,18 +88,15 @@ class CoupEnv(Env):
         return observation
 
 
-    def _action_to_string(self, action):
+    def _action_to_object(self, action):
         actions = {
-            0: "Income",
-            1: "Foreign Aid",
-            2: "Coup",
-            3: "Tax",
-            4: "Assassinate",
-            5: "Exchange",
-            6: "Steal",
-            7: "Block Assissination",
-            8: "Block Stealing",
-            9: "Block Foreign Aid"
+            0: Income(),
+            1: ForeignAid(),
+            2: Coup(),
+            3: Tax(),
+            4: Assassinate(),
+            5: Exchange(),
+            6: Steal(),
         }
         return actions.get(action, "Invalid Action")
 
@@ -106,34 +104,24 @@ class CoupEnv(Env):
     def step(self, action):
         terminated = False
         reward = 0
+        
 
-
-        # play the current players action
-        if self.players[self.player_turn].get_coins() >= 10:
-            action = "Coup"
+        if type(action) in [Assassinate, Steal, Coup]:
+            action.execute(self.players[self.player_turn], self.players[1 - self.player_turn])
+        elif type(action) == Exchange:
+            action.execute(self.players[self.player_turn], self.deck)
         else:
-            action = self._action_to_string(action)
+            action.execute(self.players[self.player_turn])
 
-        actions = {
-            "Income": self.players[self.player_turn].income,
-            "Foreign Aid": self.players[self.player_turn].foreign_aid,
-            "Tax": self.players[self.player_turn].tax,
-            "Coup": lambda: self.players[self.player_turn].coup(self.players[1 - self.player_turn]),
-            "Assassinate": lambda: self.players[self.player_turn].assasinate(self.players[1 - self.player_turn]),
-            "Exchange": lambda: self.players[self.player_turn].exchange(self.deck),
-            "Steal": lambda: self.players[self.player_turn].steal(self.players[1 - self.player_turn])
-        }
 
-        actions.get(action, lambda: None)()
 
-        # switch turns
         self.player_turn = 1 - self.player_turn
 
-        # check if game is over
-        if self.players[0].card_1.is_dead() and self.players[0].card_2.is_dead():
+
+        if self.players[0].get_card_1().is_dead() and self.players[0].get_card_2().is_dead():
             reward = -1
             terminated = True
-        elif self.players[1].card_1.is_dead() and self.players[1].card_2.is_dead():
+        elif self.players[1].get_card_1().is_dead() and self.players[1].get_card_2().is_dead():
             reward = 1
             terminated = True
 
@@ -141,8 +129,11 @@ class CoupEnv(Env):
 
         return observation, reward, terminated, {}
 
-
-
+    def challenge(self, action, player, other_player):
+        if action in player.card_1.actions() or action in player.card_2.actions():
+            other_player.lose_card()
+        else:
+            player.lose_card()
 
 def main():
     env = CoupEnv()
@@ -150,14 +141,16 @@ def main():
     
     terminated = False
     while not terminated:
-        for _ in env.players:
-            action = random.randint(0, 6)
-            print(env._action_to_string(action))
+        for i, player in enumerate(env.players):
+
+            action = env._action_to_object(random.randint(0, 6))
+
+            print(action.get_name())
             obs, reward, terminated, _ = env.step(action)
             
             for key in obs.keys():
                 print(key, obs[key])
-            print()
+
 
             if terminated:
                 break
