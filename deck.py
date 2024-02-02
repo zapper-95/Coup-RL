@@ -1,5 +1,5 @@
 import random
-from card import Card, Ambassador, Assassin, Captain, Contessa, Duke
+from card import Ambassador, Assassin, Captain, Contessa, Duke
 
 class Deck(object):
     def __init__(self):
@@ -32,5 +32,5 @@ class Deck(object):
     def draw(self):
         return self._cards.pop(0)
 
-    def add(self, card:Card):
+    def add(self, card):
         self._cards.append(card)

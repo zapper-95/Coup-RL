@@ -1,4 +1,5 @@
-from abc import ABC, abstractmethod 
+from action import Assassinate, Exchange, Steal, Tax, ForeignAid
+from abc import ABC, abstractmethod
 class Card(ABC):
 
     def __init__(self, name):
@@ -20,10 +21,10 @@ class Duke(Card):
     def __init__(self):
         super(Duke, self).__init__("Duke")
         self._name = "Duke"
-        self._action = "Tax"
+        self._action = Tax()
         self._counteracts = ["Foreign Aid"]
     
-    def actions(self):
+    def action(self):
         return self._action
     
     def counteracts(self):
@@ -33,10 +34,10 @@ class Duke(Card):
 class Captain(Card):
     def __init__(self):
         super(Captain, self).__init__("Captain")
-        self._action = ["Steal"]
+        self._action = Steal()
         self._counteracts = ["Steal"]
     
-    def actions(self):
+    def action(self):
         return self._action
     
     def counteracts(self):
@@ -46,10 +47,10 @@ class Captain(Card):
 class Ambassador(Card):
     def __init__(self):
         super(Ambassador, self).__init__("Ambassador")
-        self._action = ["Exchange"]
+        self._action = Exchange()
         self._counteracts = ["Steal"]
     
-    def actions(self):
+    def action(self):
         return self._action
     
     def counteracts(self):
@@ -59,10 +60,10 @@ class Ambassador(Card):
 class Assassin(Card):
     def __init__(self):
         super(Assassin, self).__init__("Assassin")
-        self._action = ["Assassinate"]
+        self._action = Assassinate()
         self._counteracts = []
 
-    def actions(self):
+    def action(self):
         return self._action
     
     def counteracts(self):
@@ -72,10 +73,10 @@ class Assassin(Card):
 class Contessa(Card):
     def __init__(self):
         super(Contessa, self).__init__("Contessa")
-        self._action = []
+        self._action = None
         self._counteracts = ["Assassinate"]
 
-    def actions(self):
+    def action(self):
         return self._action
     
     def counteracts(self):

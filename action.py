@@ -100,9 +100,41 @@ class Coup(Action):
             other_player.lose_card()
         
     
+class Challenge(Action):
+    def __init__(self):
+        super().__init__("Challenge")
+        self._can_be_challenged = False
+        self._can_be_counteracted = False
+
+
+    def good_challenge(self, other_player):
+        """Whether the player challenging is correct in their guess"""
+        for card in [other_player.get_card_1(), other_player.get_card_2()]:
+            if not card.is_dead() and type(card.action()) ==type(other_player.get_last_action()):
+                return False
+        return True    
+
+    def execute(self, player, other_player):
+        if other_player.get_last_action() and other_player.get_last_action().can_be_challenged():
+
+            if self.good_challenge(other_player):
+                other_player.lose_card()
+            else:
+                player.lose_card()
+
+
+        
+
+class Counteract(Action):
+    def __init__(self):
+        super().__init__("Counteract")
+        self._can_be_challenged = True
+        self._can_be_counteracted = False
 
 
 
+    def execute(self, turn):
+        pass
 
 
     

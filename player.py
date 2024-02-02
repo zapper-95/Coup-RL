@@ -1,5 +1,6 @@
 import random
 from card import Card
+from action import Action, Income, ForeignAid, Coup, Tax, Assassinate, Exchange, Steal, Challenge, Counteract
 class Player(object):
 
     
@@ -11,6 +12,62 @@ class Player(object):
         self._card_2 = deck.draw()
 
         self._coins = 1
+        self._last_action = None
+
+
+    def choose_action(self) -> Action:
+        # generate a random number between 0 and and 6
+        decision = random.randint(0, 6)
+
+        return self._action_to_object(decision)
+
+
+    def choose_counteraction(self) -> Counteract:
+        decision = random.randint(0, 1)
+
+        return self._counteraction_to_object(decision)
+
+
+    def choose_challenge(self) -> Challenge:
+        decision = random.randint(0, 1)
+
+        return self._challenge_to_object(decision)
+
+
+    def _action_to_object(self, action):
+        actions = {
+            0: Income(),
+            1: ForeignAid(),
+            2: Coup(),
+            3: Tax(),
+            4: Assassinate(),
+            5: Exchange(),
+            6: Steal(),
+        }
+        return actions.get(action, "Invalid Action")
+
+
+
+
+    def _counteraction_to_object(self, action):
+        counteractions = {
+            0: None,
+            1: Counteract(),
+        }
+
+
+    def _challenge_to_object(self, action):
+        counteractions = {
+            0: None,
+            1: Challenge(),
+        }
+
+
+    def get_last_action(self) -> Action:
+        return self._last_action
+
+    def set_last_action(self, action):
+        self._last_action = action    
 
     def get_coins(self) -> int:
         return self._coins

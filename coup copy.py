@@ -108,7 +108,7 @@ class CoupEnv(Env):
         return actions.get(action, "Invalid Action")
 
 
-    def step(self, action, turn):
+    def step(self, action_queue, turn):
         terminated = False
         reward = 0
         
@@ -116,12 +116,23 @@ class CoupEnv(Env):
 
 
 
-        if type(action) in [Assassinate, Steal, Coup, Challenge]:
-            action.execute(self.players[turn], self.players[1 - turn])
-        elif type(action) == Exchange:
-            action.execute(self.players[turn], self.deck)
-        else:
-            action.execute(self.players[turn])
+        for action in action_queue:
+            
+            # if just one action, then let the player take it
+            if len(action_queue) == 1:
+                if type(action) in [Assassinate, Steal]:
+                    action.execute(self.players[turn], self.players[1 - turn])
+                elif type(action) == Exchange:
+                    action.execute(self.players[turn], self.deck)
+                else:
+                    action.execute(self.players[turn])
+
+            elif len(action_queue) == 2:
+                # action is blocked and not challenged
+                pass
+            else:
+                # action is challenged
+                
 
 
 
@@ -151,6 +162,29 @@ def is_legal_action(action, action_queue):
     return legal
 
 
+def sub_step(env, i):
+    action_queue = []
+    player = env.players[i]
+
+    # player chooses an action
+    action = player.choose_action()
+    action_queue.append(action)
+
+    # opportunity for counteractions from the other player
+    other_player = env.players[1 - i]
+    counteraction = other_player.choose_counteraction(action)
+    if counteraction:
+        action_queue.append(counteraction)
+
+        # opportunity for the original player to challenge the counteraction
+        challenge = player.choose_to_challenge(counteraction)
+        if challenge:
+            action_queue.append(challenge)
+
+    return action_queue
+
+        
+
 def main():
     env = CoupEnv()
     obs = env.reset()
@@ -161,49 +195,9 @@ def main():
     turn_queue = []
 
     while not terminated:
-        for i, player in enumerate(env.players):
-
-            print(i)
-            action = env._action_to_object(random.randint(5, 8))
-            while not is_legal_action(action, action_queue):
-                action = env._action_to_object(random.randint(5,8))
-
-
-            if action_queue != [] and i != turn_queue[-1]:  
-
-                if (type(action_queue[-1]) == Challenge):
-                    continue
-                if type((action_queue[-1]) == Counteract):
-                    continue
-
-
-
-            print(action.get_name())
-            
-
-            
-            if type(action) == Challenge:
-
-                if action.good_challenge(env.players[1-i]):
-                    action_queue = action_queue[0:-1]
-                    turn_queue = turn_queue[0:-1]
-                else:
-                    if len(action_queue) == 1:
-                        pass
-                    elif len(action_queue) == 2:
-                        action_queue = action_queue[1:]
-                        turn_queue = turn_queue[1:]
-            elif type(action) != Counteract:
-                
-                
-                for act, turn in zip(action_queue, turn_queue):
-                    obs, reward, terminated, _ = env.step(act, turn)
-                action_queue = []
-
-            action_queue.append(action)
-            turn_queue.append(i)
-            player.set_last_action("hello")
-
+        for i, _ in enumerate(env.players):
+            action_queue = sub_step(env, i)
+            env.step(action_queue, i)
             if terminated:
                 break
 
