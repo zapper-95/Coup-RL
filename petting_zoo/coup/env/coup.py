@@ -112,15 +112,18 @@ class CoupEnv(AECEnv):
     def get_action_string(self, action_id):
         return ACTIONS[action_id]
 
-    def update_state(self, p1_action=None, p2_action=None):
+    def update_state(self, actions):
         """Updates the state space of the environment"""
-        if p1_action:
-            self.player_1_proposed_action = p1_action
+        if "player_1" in actions:
+            self.player_1_proposed_action = actions["player_1"]
         else:
-            self.player_2_proposed_action = p2_action
+            self.player_2_proposed_action = actions["player_2"]
+
+    def remove_proposed_actions(self):
+        self.player_1_proposed_action = None
+        self.player_2_proposed_action = None
     
     def observation_space(self, agent):
-        
         return self._observation_spaces[agent]
     
     def action_space(self, agent):
@@ -148,11 +151,13 @@ class CoupEnv(AECEnv):
         print("----------------")
         print(f"Player 1: {alive_cards[0]} {alive_cards[1]} {self.player_1_coins}")
         print(f"Player 2: {alive_cards[2]} {alive_cards[3]} {self.player_1_coins}")
-
-        print(f"Player 1 proposed action: {self.player_1_proposed_action}")
-        print(f"Player 2 proposed action: {self.player_2_proposed_action}")
         print("----------------")
-
+        if self.player_turn == 0:
+            print(f"Action: {self.player_1_proposed_action}")
+        else:
+            print(f"Action: {self.player_2_proposed_action}")
+        print("----------------")
+        print()
 
 
     def observe(self, agent):
@@ -242,6 +247,9 @@ class CoupEnv(AECEnv):
 
 
         self.state[self.agent_selection] = action
+        
+
+        
         #action_name = self.get_action_string(action)
 
 

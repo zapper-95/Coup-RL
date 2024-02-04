@@ -9,55 +9,56 @@ for agent in env.agent_iter():
 
     observation, reward, termination, truncation, info = env.last()
     if termination or truncation:
-        action = None
+        fst_action = None
     else:
-        action = env.action_space(agent).sample()
-        actions.append(action)
+        fst_action = env.action_space(agent).sample()
 
-        env.update_state(env.get_action_string(action), None)
+        actions.append(fst_action)
+        env.update_state({agent:env.get_action_string(fst_action)})
 
 
         scd_agent = env.get_next_agent()
-        
         scd_action = env.action_space(scd_agent).sample()
 
 
         if env.get_action_string(scd_action) == "challenge":
             actions.append(scd_action) 
-            env.update_state(None, "challenge")
+            env.update_state({scd_agent:"challenge"})
 
         elif env.get_action_string(scd_action) == "counteract":
 
             actions.append(scd_action) 
 
-            env.update_state(None, "counteract")
+            env.update_state({scd_agent:"counteract"})
 
             trd_action = env.action_space(agent).sample()
 
             if env.get_action_string(trd_action) == "challenge":
                 actions.append(trd_action)
-                #env.update_state()
+                env.update_state({agent:"challenge"})
 
+        
+ 
 
-
-
-
-        # this is where you would insert your policy
-    print(len(actions))
+    #print(len(actions))
 
     # reset it back to the first agent
 
+    if len(actions) == 0:
+        env.step(None)
 
     for act in actions:
         
-        print(f"Agent {env.agent_selection} is taking action {env.get_action_string(act)}")
+        #print(f"{env.agent_selection} is taking action {env.get_action_string(act)}")
 
-        env.step(action)
+        env.step(act)
         env.increment_next_agent()
     
+    # ensure it goes back to the first agent
     if len(actions) == 2:
         env.increment_next_agent()
 
+    env.remove_proposed_actions()
     
 
 env.close()
