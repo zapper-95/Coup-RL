@@ -1,5 +1,5 @@
 from player import Player
-from deck import Deck
+from petting_zoo.coup.env.deck import Deck
 import random
 num_players = 2
 
@@ -46,7 +46,12 @@ action_counter_card = {
     "steal": ["ambassador", "captain"],   
 }
 
-def print_game(turn, state_space):
+def initialise_state_space(state_space:dict, deck:Deck, num_players:int) -> None:
+    for i in range(num_players):
+        for j in range(2):
+            state_space[f"player_{i+1}_card_{j+1}"] = deck.draw_card()
+
+def print_game(turn:int, state_space:dict) -> None:
     """Print the state space in a readable format"""
     print("----------------")
     print(f"Turn: P{turn+1}")
@@ -63,20 +68,20 @@ def print_game(turn, state_space):
     print(f"Player 2: {alive_cards[2]} {alive_cards[3]} {state_space['player_2_coins']}")
 
 
-def end_state(state_space):
+def end_state(state_space:dict) -> bool:
     """Check if the game has ended"""
     return ((not state_space["player_1_card_1_alive"] and not state_space["player_1_card_2_alive"])
             or 
             (not state_space["player_2_card_1_alive"] and not state_space["player_2_card_2_alive"]))
 
-def loose_card(player_id, state_space):
+def loose_card(player_id:int, state_space:dict) -> None:
     """Loose a card for a player"""
     if(state_space[f"player_{player_id+1}_card_1_alive"]):
         state_space[f"player_{player_id+1}_card_1_alive"] = False
     else:
         state_space[f"player_{player_id+1}_card_2_alive"] = False
 
-def play_action(proposed_action:str, player_id:int, state_space:dict, deck:Deck):
+def play_action(proposed_action:str, player_id:int, state_space:dict, deck:Deck) -> None:
     """Play an action and update the state space"""
 
     if proposed_action == "income":
@@ -108,9 +113,9 @@ def play_action(proposed_action:str, player_id:int, state_space:dict, deck:Deck)
 
 
 
-def action_legal(state, player_id, action):
+def action_legal(action:str, player_id:int, state_space:dict) -> bool:
     """Check if an action of given player is legal for the cards they have"""
-    cards = [state[f"player_{player_id+1}_card_1"], state[f"player_{player_id+1}_card_2"]]
+    cards = [state_space[f"player_{player_id+1}_card_1"], state_space[f"player_{player_id+1}_card_2"]]
 
     if action in action_card.keys():
         if not action_card[action] in cards:
@@ -118,16 +123,16 @@ def action_legal(state, player_id, action):
         
     return True
     
-def can_counteract(action):
+def can_counteract(action:str) -> bool:
     """Check if an action can be counteracted"""
     return action in action_counter_card.keys()
 
 
-def counteraction_legal(state, player_id, stop_action):
+def counteraction_legal(stop_action:str, player_id:int, state_space:dict) -> bool:
     """Check if a player can stop an action of another"""
 
     # cards of the counteracting player
-    cards = [state[f"player_{player_id+1}_card_1"], state[f"player_{player_id+1}_card_2"]]
+    cards = [state_space[f"player_{player_id+1}_card_1"], state_space[f"player_{player_id+1}_card_2"]]
 
     # check that the action they are stopping can be counteracted
     if can_counteract(stop_action):
@@ -139,9 +144,6 @@ def counteraction_legal(state, player_id, stop_action):
     return False
 
 
-    
-    
-
 
 def main():
     player_turn = 0
@@ -150,42 +152,40 @@ def main():
     players = [Player(i) for i in range(num_players)]
     deck = Deck(cards)
 
+    # draw cards for each player and initialise state space
+    initialise_state_space(state_space, deck, num_players)
+    
 
-
-    for i in range(num_players):
-        for j in range(2):
-            state_space[f"player_{i+1}_card_{j+1}"] = deck.draw_card()
 
 
     while not end_state(state_space):
         print_game(player_turn, state_space)
-        #input()
+
+        # queue containing the players in the order they will play
         player_queue = []
         current_player = players[player_turn]
 
         player_queue.append(current_player.get_id())
 
-
+        # scheme by which the AI will generate an action from the state space
         proposed_action = current_player.get_action(state_space, action_space)
         print(proposed_action)
 
         state_space[f"player_{current_player.get_id()+1}_proposed_action"] = proposed_action
 
 
-        # iterate through all players to see if they challenge
+        # iterate through all players to see if they challenge or counteract
         for secondary_player in players:
 
             if secondary_player != current_player:
                 second_action = secondary_player.get_action(state_space, action_space)
 
-                # a -> ch
                 if second_action == "challenge":
                     print("challenge")
                     player_queue.append(secondary_player.get_id())
                     state_space[f"player_{secondary_player.get_id()+1}_proposed_action"] = "challenge"
                     break
 
-                # a -> co or a -> co -> ch
                 elif second_action == "counteract":
                     print("counteract")
                     player_queue.append(secondary_player.get_id())
@@ -193,7 +193,6 @@ def main():
 
                     for tertiary_player in players:
                         
-                        # a -> ch
                         if tertiary_player != secondary_player and tertiary_player.get_action(state_space, action_space) == "challenge":
                             print("challenge")
                             player_queue.append(tertiary_player.get_id())
@@ -202,27 +201,31 @@ def main():
 
         
 
-        # if the player queue is only 1, then no counteraction or challenges
+        # if the player queue is only 1, then the action goes through
         if len(player_queue) == 1:
             play_action(proposed_action, player_queue[0], state_space, deck)
+
+        # either the action is challenged or counteracted
         elif len(player_queue) == 2:
             
-            # if a -> co nothing happens
-            # if a -> ch then check if action was legal
+            if(state_space[f"player_{player_queue[1]+1}_proposed_action"]) == "challenge":
 
-            if(state_space[f"player_{player_queue[1]+1}_proposed_action"]) == "challenge":   
-                if action_legal(state_space, player_queue[0],proposed_action):
+                # check whether the challenge was correct   
+                if action_legal(proposed_action, player_queue[0], state_space):
                     play_action(proposed_action, player_queue[0], state_space, deck)
                     loose_card(player_queue[1], state_space)
                 else:
                     loose_card(player_queue[0], state_space)
             else:
+                
+                # if the action can be counteracted, then no actions are taken
+                # if the counteraction is played on an action that cannot be counteracted, then ignore it
                 if not can_counteract(proposed_action):
                     print("invalid counteraction")
                     play_action(proposed_action, player_queue[0], state_space, deck)
 
         else:
-            if counteraction_legal(state_space, player_queue[1], proposed_action):
+            if counteraction_legal(proposed_action, player_queue[1], state_space):
                 # counteraction was valid so challenging player looses card
                 loose_card(player_queue[2], state_space)
             else:
