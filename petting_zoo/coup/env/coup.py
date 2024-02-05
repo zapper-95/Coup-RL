@@ -27,7 +27,7 @@ ACTIONS = [
     "challenge",
     "coup"
 ]
-NUM_ITERS = 10
+NUM_ITERS = 100
 REWARD_MAP = {
     (ROCK, ROCK): (0, 0),
     (ROCK, PAPER): (-1, 1),
@@ -68,21 +68,24 @@ class CoupEnv(AECEnv):
     }
 
     def __init__(self, render_mode=None):
-
+        
+        
         self.render_mode = render_mode
         
-        self.player_1_card_1 = None
-        self.player_1_card_2 = None
-        self.player_2_card_1 = None
-        self.player_2_card_2 = None
-        self.player_1_card_1_alive = True
-        self.player_1_card_2_alive = True
-        self.player_2_card_1_alive = True
-        self.player_2_card_2_alive = True
-        self.player_1_coins = 1
-        self.player_2_coins = 1
-        self.player_1_proposed_action = None
-        self.player_2_proposed_action = None
+        self.state_space = {
+            "player_1_card_1": None,
+            "player_1_card_2": None,
+            "player_2_card_1": None,
+            "player_2_card_2": None,
+            "player_1_card_1_alive": True,
+            "player_1_card_2_alive": True,
+            "player_2_card_1_alive": True,
+            "player_2_card_2_alive": True,
+            "player_1_coins": 1,
+            "player_2_coins": 1,
+            "player_1_action": None,
+            "player_2_action": None
+        }
 
         self.player_turn = 0
         self.agents = [f"player_{i+1}" for i in range(2)]
@@ -115,13 +118,13 @@ class CoupEnv(AECEnv):
     def update_state(self, actions):
         """Updates the state space of the environment"""
         if "player_1" in actions:
-            self.player_1_proposed_action = actions["player_1"]
+            self.state_space["player_1_action"] = actions["player_1"]
         else:
-            self.player_2_proposed_action = actions["player_2"]
+            self.state_space["player_2_action"] = actions["player_2"]
 
-    def remove_proposed_actions(self):
-        self.player_1_proposed_action = None
-        self.player_2_proposed_action = None
+    def remove_actions(self):
+        self.state_space["player_1_action"] = None
+        self.state_space["player_2_action"] = None
     
     def observation_space(self, agent):
         return self._observation_spaces[agent]
@@ -147,15 +150,24 @@ class CoupEnv(AECEnv):
         alive_cards = []
 
 
-        alive_cards = [self.player_1_card_1, self.player_1_card_2, self.player_2_card_1, self.player_2_card_2]
+
+        for i in range(2):
+            for j in range(2):
+                if self.state_space[f"player_{i+1}_card_{j+1}_alive"]:
+                    alive_cards.append(self.state_space[f"player_{i+1}_card_{j+1}"])
+                else:
+                    alive_cards.append("dead")
+            
+
+        
         print("----------------")
-        print(f"Player 1: {alive_cards[0]} {alive_cards[1]} {self.player_1_coins}")
-        print(f"Player 2: {alive_cards[2]} {alive_cards[3]} {self.player_1_coins}")
+        print(f"Player 1: {alive_cards[0]} {alive_cards[1]} {self.state_space['player_1_coins']}")
+        print(f"Player 2: {alive_cards[2]} {alive_cards[3]} {self.state_space['player_2_coins']}")
         print("----------------")
         if self.player_turn == 0:
-            print(f"Action: {self.player_1_proposed_action}")
+            print(f"Action: {self.state_space['player_1_action']}")
         else:
-            print(f"Action: {self.player_2_proposed_action}")
+            print(f"Action: {self.state_space['player_2_action']}")
         print("----------------")
         print()
 
@@ -163,26 +175,26 @@ class CoupEnv(AECEnv):
     def observe(self, agent):
         if agent == "player_1":
             return np.array(
-                [self.player_1_card_1,
-                 self.player_1_card_2,
-                 self.player_1_coins,
-                 self.player_2_card_1_alive,
-                 self.player_2_card_2_alive,
-                self.player_2_coins,
-                self.player_1_proposed_action,
-                self.player_2_proposed_action, 
+                [self.state_space["player_1_card_1"],
+                 self.state_space["player_1_card_2"],
+                 self.state_space["player_1_coins"],
+                 self.state_space["player_2_card_1_alive"],
+                 self.state_space["player_2_card_2_alive"],
+                 self.state_space["player_2_coins"],
+                 self.state_space["player_1_action"],
+                 self.state_space["player_2_action"], 
                  ]
                 )
         elif agent == "player_2":
             return np.array(
-                [self.player_2_card_1,
-                 self.player_2_card_2,
-                 self.player_2_coins,
-                 self.player_1_card_1_alive,
-                 self.player_1_card_2_alive,
-                 self.player_1_coins,
-                 self.player_2_proposed_action,
-                 self.player_1_proposed_action, 
+                [self.state_space["player_2_card_1"],
+                 self.state_space["player_2_card_2"],
+                 self.state_space["player_2_coins"],
+                 self.state_space["player_1_card_1_alive"],
+                 self.state_space["player_1_card_2_alive"],
+                 self.state_space["player_1_coins"],
+                 self.state_space["player_2_action"],
+                 self.state_space["player_1_action"], 
                  ]
                 )
     
@@ -207,23 +219,59 @@ class CoupEnv(AECEnv):
         
         # custom instructions
         self.deck = Deck(CARDS)
-        self.player_1_card_1 = self.deck.draw_card()
-        self.player_1_card_2 = self.deck.draw_card()
-        self.player_2_card_1 = self.deck.draw_card()
-        self.player_2_card_2 = self.deck.draw_card()
-
-        self.player_1_card_1_alive = True
-        self.player_1_card_2_alive = True
-        self.player_2_card_1_alive = True
-        self.player_2_card_2_alive = True
-
-        self.player_1_coins = 1
-        self.player_2_coins = 1
-
-        self.player_1_proposed_action = None
-        self.player_2_proposed_action = None
+        self.state_space = {
+            "player_1_card_1": self.deck.draw_card(),
+            "player_1_card_2": self.deck.draw_card(),
+            "player_2_card_1": self.deck.draw_card(),
+            "player_2_card_2": self.deck.draw_card(),
+            "player_1_card_1_alive": True,
+            "player_1_card_2_alive": True,
+            "player_2_card_1_alive": True,
+            "player_2_card_2_alive": True,
+            "player_1_coins": 1,
+            "player_2_coins": 1,
+            "player_1_action": None,
+            "player_2_action": None
+        }
 
         self.player_turn = 0
+
+
+    def loose_card(self, agent, state_space:dict) -> None:
+        """Loose a card for a player"""
+
+        if(self.state_space[f"{agent}_card_1_alive"]):
+            self.state_space[f"{agent}_card_1_alive"] = False
+        else:
+            self.state_space[f"{agent}_card_2_alive"] = False
+
+            
+    def process_action(self, agent, other_agent, action):
+        action = self.get_action_string(action)
+
+        if action == "income":
+            self.state_space[f"{agent}_coins"] += 1
+        elif action == "foreign_aid":
+            self.state_space[f"{agent}_coins"] += 2
+        elif action == "tax":
+            self.state_space[f"{agent}_coins"] += 3
+        elif action == "assassinate" and self.state_space[f"{agent}_coins"] >= 3:
+            self.loose_card(other_agent, self.state_space)
+            self.state_space[f"{agent}_coins"] -= 3
+        elif action == "exchange":
+            self.deck.add_card(self.state_space[f"{agent}_card_1"])
+            self.deck.add_card(self.state_space[f"{agent}_card_2"])
+            self.state_space[f"{agent}_card_1"] = self.deck.draw_card()
+            self.state_space[f"{agent}_card_2"] = self.deck.draw_card()
+        elif action == "steal":
+            self.state_space[f"{agent}_coins"] += min(2, self.state_space[f"{other_agent}_coins"])
+            self.state_space[f"{other_agent}_coins"] -= min(2, self.state_space[f"{other_agent}_coins"])
+        elif action == "coup" and self.state_space[f"{agent}_coins"] >= 7:
+            self.state_space[f"{agent}_coins"] -= 7
+            self.loose_card(other_agent, self.state_space)
+        else:
+            print("invalid action")
+
 
 
     def step(self, action):
@@ -239,6 +287,8 @@ class CoupEnv(AECEnv):
             self._was_dead_step(action)
             return     
 
+
+
         agent = self.agent_selection
 
         self.player_turn = self.agent_name_mapping[agent]
@@ -247,19 +297,19 @@ class CoupEnv(AECEnv):
 
 
         self.state[self.agent_selection] = action
-        
 
         
         #action_name = self.get_action_string(action)
 
 
         # give a new set of observations if the agent is the last one
-        if True:
-            self.num_moves += 1
 
-            self.truncations = {
-                agent: self.num_moves >= NUM_ITERS for agent in self.agents
-            }
+        self.num_moves += 1
+
+        self.truncations = {
+            agent: self.num_moves >= NUM_ITERS for agent in self.agents
+        }
+
 
             #self.observations[0] = s
 
@@ -276,9 +326,34 @@ class CoupEnv(AECEnv):
         #     # no rewards are allocated until both players give an action
         #     self._clear_rewards()
 
+        # other_agent = self._agent_selector.next()
 
+        
+    
+   
+
+        #print(self._agent_selector.next())
         # selects the next agent.
+        #self.agent_selection = self._agent_selector.next()
+            
+        # change the agent selection to the next agent
         self.agent_selection = self._agent_selector.next()
+
+        # process the action of the current agent
+        self.process_action(agent, self.agent_selection, action)
+
+        terminate = not((
+            self.state_space["player_1_card_1_alive"] 
+            or self.state_space["player_1_card_2_alive"])
+            and (
+            self.state_space["player_2_card_1_alive"] 
+            or self.state_space["player_2_card_2_alive"]))
+
+        self.terminations = {
+            agent: terminate for agent in self.agents
+        }
+
+
         # Adds .rewards to ._cumulative_rewards
         self._accumulate_rewards()
 
