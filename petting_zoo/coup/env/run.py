@@ -9,10 +9,15 @@ for agent in env.agent_iter():
     actions = []
 
     observation, reward, termination, truncation, info = env.last()
-    #print(f"Previous Reward {reward}")
+
+    if reward != 0:
+        print(f"Reward {reward}")
+        
     if termination or truncation:
         fst_action = None
         actions.append(None)
+
+        # iterate to the correct agent for the next block
         env.get_next_agent()
 
     else:
@@ -43,24 +48,10 @@ for agent in env.agent_iter():
                 env.update_state({agent:"challenge"})
 
         
- 
-
-    #print(len(actions))
-
-
-    # if len(actions) == 0:
-    #     env.step(None)
-
-
     # reset to the first agent
     env.get_next_agent()
     # iterate through the actions and apply them
     for act in actions:
-        
-        #print(f"{env.agent_selection} is taking action {env.get_action_string(act)}")
-        #env.increment_next_agent()
-        # updates the current agent in the env
-
         env.step(act)
  
     

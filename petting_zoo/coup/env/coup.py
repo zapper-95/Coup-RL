@@ -170,7 +170,8 @@ class CoupEnv(AECEnv):
         print(f"Player 1: {alive_cards[0]} {alive_cards[1]} {self.state_space['player_1_coins']}")
         print(f"Player 2: {alive_cards[2]} {alive_cards[3]} {self.state_space['player_2_coins']}")
         print("----------------")
-
+        print()
+        print()
 
 
     def observe(self, agent):
@@ -294,14 +295,7 @@ class CoupEnv(AECEnv):
 
         self._cumulative_rewards[agent] = 0
 
-
-        self.state[self.agent_selection] = action
-
-        
-        #action_name = self.get_action_string(action)
-
-
-        # give a new set of observations if the agent is the last one
+        #self.state[self.agent_selection] = action
 
         self.num_moves += 1
 
@@ -309,23 +303,7 @@ class CoupEnv(AECEnv):
             agent: self.num_moves >= NUM_ITERS for agent in self.agents
         }
 
-
-            #self.observations[0] = s
-
-            # for i in self.agents:
-
-
-            #     self.observations[i] = self.state[
-            #         self.agents[1 - self.agent_name_mapping[i]]
-            #     ]
-            # print(self.observations)
-        # else:
-        #     # necessary so that observe() returns a reasonable observation at all times.
-        #     self.state[self.agents[1 - self.agent_name_mapping[agent]]] = NONE
-        #     # no rewards are allocated until both players give an action
-        #     self._clear_rewards()
-            
-        # change the agent selection to the next agent
+        # get the next agent
         self.agent_selection = self._agent_selector.next()
 
         # process the action of the current agent
@@ -339,45 +317,11 @@ class CoupEnv(AECEnv):
             or self.state_space["player_2_card_2_alive"]))
 
 
-
         if terminate:
             self.set_game_result()
 
-
-
         # Adds .rewards to ._cumulative_rewards
         self._accumulate_rewards()
-
-
-        # if (
-        #     self.terminations[agent]
-        #     or self.truncations[agent]
-        # ):
-        #     # handles stepping an agent which is already dead
-        #     # accepts a None action for the one agent, and moves the agent_selection to
-        #     # the next dead agent,  or if there are no more dead agents, to the next live agent
-        #     #self._was_dead_step(action)
-
-        #     # return reward which is the difference in number of cards alive
-            
-        #     if agent == "player_1":
-        #         self.rewards["player_1"] = (
-        #         (int(self.state_space["player_1_card_1_alive"]) + int(self.state_space["player_1_card_2_alive"]))
-        #         - (int(self.state_space["player_2_card_1_alive"]) + int(self.state_space["player_2_card_2_alive"]))            
-        #         )
-        #     else:
-        #         self.rewards["player_2"] = (
-        #         (int(self.state_space["player_2_card_1_alive"]) + int(self.state_space["player_2_card_2_alive"]))
-        #         - (int(self.state_space["player_1_card_1_alive"]) + int(self.state_space["player_1_card_2_alive"]))            
-        #         )
-                
-            #self._was_dead_step(action)
-
-
-
-
-
-
 
 
         if self.render_mode == "human":
