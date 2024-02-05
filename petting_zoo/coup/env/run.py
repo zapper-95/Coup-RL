@@ -5,15 +5,16 @@ import coup
 env = coup.env(render_mode="human")
 env.reset(seed=42)
 
-#
-
 for agent in env.agent_iter():
     actions = []
 
     observation, reward, termination, truncation, info = env.last()
+    #print(f"Previous Reward {reward}")
     if termination or truncation:
         fst_action = None
-        break
+        actions.append(None)
+        env.get_next_agent()
+
     else:
         fst_action = env.action_space(agent).sample()
 
@@ -47,8 +48,8 @@ for agent in env.agent_iter():
     #print(len(actions))
 
 
-    if len(actions) == 0:
-        env.step(None)
+    # if len(actions) == 0:
+    #     env.step(None)
 
 
     # reset to the first agent
