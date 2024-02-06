@@ -23,9 +23,9 @@ ACTIONS = [
     "assassinate",
     "exchange",
     "steal",
+    "coup",
     "counteract",
     "challenge",
-    "coup"
 ]
 NUM_ITERS = 100
 
@@ -73,6 +73,20 @@ class CoupEnv(AECEnv):
             "player_2_coins": 1,
             "player_1_action": None,
             "player_2_action": None
+        }
+
+        self.action_card = {
+            "tax": "duke",
+            "assissinate": "assassin",
+            "exchange": "ambassador",
+            "steal": "captain",
+        }
+
+
+        self.action_counter_card = {
+            "foreign_aid":"duke",
+            "assassinate":"contessa",
+            "steal": ["ambassador", "captain"],   
         }
 
         self.player_turn = 0
@@ -124,7 +138,7 @@ class CoupEnv(AECEnv):
         return self._action_spaces[agent]
 
 
-    def render(self):
+    def render(self, action):
         """
         Renders the environment. In human mode, it can print to terminal, open
         up a graphical window, or open up some other display that a human can see and understand.
@@ -141,10 +155,11 @@ class CoupEnv(AECEnv):
         alive_cards = []
 
         print("----------------")
-        if self.player_turn == 0:
-            print(f"Action: {self.state_space['player_1_action']}")
-        else:
-            print(f"Action: {self.state_space['player_2_action']}")
+        print(f"Action: {self.get_action_string(action)}")
+        # if self.player_turn == 0:
+        #     print(f"Action: {self.state_space['player_1_action']}")
+        # else:
+        #     print(f"Action: {self.state_space['player_2_action']}")
         print("----------------")
 
 
@@ -227,7 +242,7 @@ class CoupEnv(AECEnv):
         self.player_turn = 0
 
 
-    def loose_card(self, agent, state_space:dict) -> None:
+    def loose_card(self, agent) -> None:
         """Loose a card for a player"""
 
         if(self.state_space[f"{agent}_card_1_alive"]):
@@ -259,8 +274,6 @@ class CoupEnv(AECEnv):
         elif action == "coup" and self.state_space[f"{agent}_coins"] >= 7:
             self.state_space[f"{agent}_coins"] -= 7
             self.loose_card(other_agent, self.state_space)
-        else:
-            print("invalid action")
 
     def set_game_result(self):
         for i, name in enumerate(self.agents):
@@ -268,6 +281,42 @@ class CoupEnv(AECEnv):
             reward =  (int(self.state_space[f"{name}_card_1_alive"]) + int(self.state_space[f"{name}_card_2_alive"])) - (int(self.state_space[f"{self.agents[1 - i]}_card_1_alive"]) + int(self.state_space[f"{self.agents[1 - i]}_card_2_alive"]))
             self.rewards[name] = reward
 
+
+    def action_legal(self, agent:int, action:int) -> bool:
+        """Check if an action of given player is legal for the cards they have"""
+        action = self.get_action_string(action)
+        cards = [self.state_space[f"{agent}_card_1"], self.state_space[f"{agent}_card_2"]]
+
+        if action in self.action_card.keys():
+            if not self.action_card[action] in cards:
+                return False
+            
+        return True
+        
+    def can_counteract(self, action:int) -> bool:
+        """Check if an action can be counteracted"""
+        action = self.get_action_string(action)
+        return action in self.action_counter_card.keys()
+
+
+    def counteraction_legal(self, stop_action:int, agent:int) -> bool:
+        """Check if a player can stop an action of another"""
+
+        # cards of the counteracting player
+        cards = [self.state_space[f"{agent}_card_1"], self.state_space[f"{agent}_card_2"]]
+
+        # check that the action they are stopping can be counteracted
+        if self.can_counteract(stop_action):
+
+
+            # action which is being stopped
+            stop_action = self.get_action_string(stop_action)
+
+            # check that they have at least one of the required cards to stop the action
+            if len(set(cards).intersection(set(self.action_counter_card[stop_action]))) > 0:
+                return True
+
+        return False
 
     def step(self, action):
         """Step requires checking if the other player counteracts or challenges before executing it"""
@@ -313,4 +362,4 @@ class CoupEnv(AECEnv):
 
 
         if self.render_mode == "human":
-            self.render()
+            self.render(action)
