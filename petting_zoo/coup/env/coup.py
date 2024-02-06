@@ -10,11 +10,6 @@ import numpy as np
 # based on code from https://pettingzoo.farama.org/content/environment_creation/
 
 
-
-ROCK = 0
-PAPER = 1
-SCISSORS = 2
-NONE = 3
 CARDS = ["ambassador", "assassin", "captain", "contessa", "duke"]
 ACTIONS = [
     "income",
@@ -77,7 +72,7 @@ class CoupEnv(AECEnv):
 
         self.action_card = {
             "tax": "duke",
-            "assissinate": "assassin",
+            "assassinate": "assassin",
             "exchange": "ambassador",
             "steal": "captain",
         }
