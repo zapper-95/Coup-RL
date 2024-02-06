@@ -26,7 +26,7 @@ for agent in env.agent_iter():
         fst_action = env.action_space(agent).sample(action_mask)
         actions.append(fst_action)
         env.update_state({agent:env.get_action_string(fst_action)})
-        print(env.get_action_string(fst_action))
+
 
         scd_agent = env.get_next_agent()
         scd_action = env.action_space(scd_agent).sample(challenge_mask)
@@ -41,7 +41,7 @@ for agent in env.agent_iter():
 
             env.update_state({scd_agent:"counteract"})
 
-            trd_action = env.action_space(agent).sample(action_mask)
+            trd_action = env.action_space(agent).sample(challenge_mask)
 
             if env.get_action_string(trd_action) == "challenge":
                 actions.append(trd_action)
