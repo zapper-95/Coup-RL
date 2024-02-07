@@ -3,7 +3,7 @@ import numpy as np
 
 action_mask = np.array([1, 1, 1, 1, 1, 1, 1, 0, 0], dtype=np.int8)
 challenge_mask = np.array([0, 0, 0, 0, 0, 0, 0, 1, 1], dtype=np.int8)
-diff_mask = np.array([0, 0, 1, 1, 0, 0, 0, 1, 0], dtype=np.int8)
+diff_mask = np.array([0, 1, 0, 0, 0, 0, 0, 1, 1], dtype=np.int8)
 
 env = coup.env(render_mode="human")
 env.reset(seed=42)
@@ -24,7 +24,7 @@ for agent in env.agent_iter():
 
     else:
 
-        action = env.action_space(agent).sample(diff_mask)
+        action = env.action_space(agent).sample()
         
 
 
