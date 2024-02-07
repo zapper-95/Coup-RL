@@ -12,6 +12,7 @@ for agent in env.agent_iter():
 
     observation, reward, termination, truncation, info = env.last()
 
+
     if reward != 0:
         print(f"Reward {reward}")
         
@@ -55,15 +56,20 @@ for agent in env.agent_iter():
                     env.loose_card(scd_agent)
                 else:
                     env.loose_card(agent)
+                    actions.pop(0)
             else:
                 if not env.can_counteract(fst_action):
                     actions.pop()
+                else:
+                    actions.pop(0)
             
         elif len(actions) == 3:
-            if env.counteraction_legal(fst_action, scd_agent):
-                env.loose_card(agent)
-            else:
-                env.loose_card(scd_agent)
+            if env.can_counteract(fst_action):
+                if env.counteraction_legal(fst_action, scd_agent):
+                    env.loose_card(agent)
+                    actions.pop(0)
+                else:
+                    env.loose_card(scd_agent)
 
 
 

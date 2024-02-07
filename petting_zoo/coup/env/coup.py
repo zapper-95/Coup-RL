@@ -270,11 +270,23 @@ class CoupEnv(AECEnv):
             self.state_space[f"{agent}_coins"] -= 7
             self.loose_card(other_agent, self.state_space)
 
-    def set_game_result(self):
-        for i, name in enumerate(self.agents):
-            self.terminations[name] = True
-            reward =  (int(self.state_space[f"{name}_card_1_alive"]) + int(self.state_space[f"{name}_card_2_alive"])) - (int(self.state_space[f"{self.agents[1 - i]}_card_1_alive"]) + int(self.state_space[f"{self.agents[1 - i]}_card_2_alive"]))
-            self.rewards[name] = reward
+    def set_game_result(self, agent):
+        # for i, name in enumerate(self.agents):
+        #     self.terminations[name] = True
+        #     reward =  (int(self.state_space[f"{name}_card_1_alive"]) + int(self.state_space[f"{name}_card_2_alive"])) - (int(self.state_space[f"{self.agents[1 - i]}_card_1_alive"]) + int(self.state_space[f"{self.agents[1 - i]}_card_2_alive"]))
+        #     self.rewards[name] = reward
+        self.terminations[agent] = True
+        other_indx = 1-self.agents.index(agent)
+
+        reward = ((
+                int(self.state_space[f"{agent}_card_1_alive"]) 
+                + int(self.state_space[f"{agent}_card_2_alive"])
+                )- 
+                (
+                int(self.state_space[f"{self.agents[other_indx]}_card_1_alive"]) 
+                + int(self.state_space[f"{self.agents[other_indx]}_card_2_alive"])
+                ))
+        self.rewards[agent] = reward
 
 
     def action_legal(self, agent:int, action:int) -> bool:
@@ -338,9 +350,6 @@ class CoupEnv(AECEnv):
         # get the next agent
         self.agent_selection = self._agent_selector.next()
 
-        # process the action of the current agent
-        self.process_action(agent, self.agent_selection, action)
-
         terminate = not((
             self.state_space["player_1_card_1_alive"] 
             or self.state_space["player_1_card_2_alive"])
@@ -350,7 +359,12 @@ class CoupEnv(AECEnv):
 
 
         if terminate:
-            self.set_game_result()
+            self.set_game_result(agent)
+
+        # process the action of the current agent
+        self.process_action(agent, self.agent_selection, action)
+
+
 
         # Adds .rewards to ._cumulative_rewards
         self._accumulate_rewards()
