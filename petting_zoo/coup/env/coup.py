@@ -115,7 +115,7 @@ class CoupEnv(AECEnv):
         
         return ACTIONS[action_id]
 
-    def update_state(self, actions):
+    def update_player_action(self, actions):
         """Updates the state space of the environment"""
         if "player_1" in actions:
             self.state_space["player_1_action"] = actions["player_1"]
@@ -247,28 +247,89 @@ class CoupEnv(AECEnv):
 
             
     def process_action(self, agent, other_agent, action):
-        action = self.get_action_string(action)
+        action_str = self.get_action_string(action)
 
-        if action == "income":
+        if action_str == "income":
             self.state_space[f"{agent}_coins"] += 1
-        elif action == "foreign_aid":
+        elif action_str == "foreign_aid":
             self.state_space[f"{agent}_coins"] += 2
-        elif action == "tax":
+        elif action_str == "tax":
             self.state_space[f"{agent}_coins"] += 3
-        elif action == "assassinate" and self.state_space[f"{agent}_coins"] >= 3:
-            self.loose_card(other_agent, self.state_space)
+        elif action_str == "assassinate" and self.state_space[f"{agent}_coins"] >= 3:
+            self.loose_card(other_agent)
             self.state_space[f"{agent}_coins"] -= 3
-        elif action == "exchange":
+        elif action_str == "exchange":
             self.deck.add_card(self.state_space[f"{agent}_card_1"])
             self.deck.add_card(self.state_space[f"{agent}_card_2"])
             self.state_space[f"{agent}_card_1"] = self.deck.draw_card()
             self.state_space[f"{agent}_card_2"] = self.deck.draw_card()
-        elif action == "steal":
+        elif action_str == "steal":
             self.state_space[f"{agent}_coins"] += min(2, self.state_space[f"{other_agent}_coins"])
             self.state_space[f"{other_agent}_coins"] -= min(2, self.state_space[f"{other_agent}_coins"])
-        elif action == "coup" and self.state_space[f"{agent}_coins"] >= 7:
+        elif action_str == "coup" and self.state_space[f"{agent}_coins"] >= 7:
             self.state_space[f"{agent}_coins"] -= 7
-            self.loose_card(other_agent, self.state_space)
+            self.loose_card(other_agent)
+        elif action_str == "counteract":
+            if self.can_counteract(self.state_space[f"{other_agent}_action"]):
+                self.reverse_action(other_agent, agent, self.state_space[f"{other_agent}_action"])
+        elif action_str == "challenge":
+            if self.state_space[f"{other_agent}_action"] != "counteract":
+                # if a normal action is being challenged
+                
+                # check whether that action was legal
+                if self.action_legal(other_agent, self.state_space[f"{other_agent}_action"]):
+                    self.loose_card(agent)
+                else:
+                    # if the action was not legal, than reverse its effect
+                    self.reverse_action(other_agent, agent, self.state_space[f"{other_agent}_action"])
+                    self.loose_card(other_agent)
+            else:
+                # if it is a counteraction being challenged, check whether the counteraction was legal
+                if self.counteraction_legal(self.state_space[f"{agent}_action"], other_agent):
+                    self.loose_card(agent)
+                else:
+                    # if it was not legal, let the player play their initial action again
+                    self.process_action(agent, other_agent, self.state_space[f"{agent}_action"])
+                    self.loose_card(other_agent)
+        else:
+            # action did not go through
+            action_str=None
+
+
+
+        self.update_player_action({agent:action})
+
+                
+            
+
+
+
+    def reverse_action(self, other_agent, agent, action):
+        """Reverse the action of the other player"""
+        action = self.get_action_string(action)
+
+        if action == "steal":
+            self.state_space[f"{agent}_coins"] += min(2, self.state_space[f"{other_agent}_coins"])
+            self.state_space[f"{other_agent}_coins"] -= min(2, self.state_space[f"{other_agent}_coins"])
+        elif action == "tax":
+            self.state_space[f"{other_agent}_coins"] -= 3
+        elif action == "foreign_aid":
+            self.state_space[f"{other_agent}_coins"] -= 2
+        elif action == "assassinate":
+            if not self.state_space[f"{agent}_card_2_alive"]:
+                self.state_space[f"{agent}_card_2_alive"] = True
+            elif self.state_space[f"{agent}_card_1_alive"]:
+                self.state_space[f"{agent}_card_1_alive"] = True
+        elif action == "exchange":
+            card_1, card_2 = self.deck.draw_card_no_shuffle(), self.deck.draw_card_no_shuffle()
+            
+            self.deck.add_card(self.state_space[f"{other_agent}_card_1"])
+            self.deck.add_card(self.state_space[f"{other_agent}_card_2"])
+            
+            self.state_space[f"{other_agent}_card_1"] = card_1
+            self.state_space[f"{other_agent}_card_2"] = card_2
+
+
 
     def set_game_result(self, agent):
         # for i, name in enumerate(self.agents):
@@ -302,13 +363,20 @@ class CoupEnv(AECEnv):
         
     def can_counteract(self, action:int) -> bool:
         """Check if an action can be counteracted"""
-        action = self.get_action_string(action)
         return action in self.action_counter_card.keys()
 
+    
+    def terminated(self):
+          return not((
+            self.state_space["player_1_card_1_alive"] 
+            or self.state_space["player_1_card_2_alive"])
+            and (
+            self.state_space["player_2_card_1_alive"] 
+            or self.state_space["player_2_card_2_alive"]))
 
     def counteraction_legal(self, stop_action:int, agent:int) -> bool:
         """Check if a player can stop an action of another"""
-
+        
         # cards of the counteracting player
         cards = [self.state_space[f"{agent}_card_1"], self.state_space[f"{agent}_card_2"]]
 
@@ -336,8 +404,10 @@ class CoupEnv(AECEnv):
         agent = self.agent_selection
 
         self.player_turn = self.agent_name_mapping[agent]
-
-        self._cumulative_rewards[agent] = 0
+        
+        # reset the cumulative rewards for both agents, as we recalculate them at the end
+        for a in self.agents:
+            self._cumulative_rewards[a] = 0
 
         #self.state[self.agent_selection] = action
 
@@ -350,25 +420,19 @@ class CoupEnv(AECEnv):
         # get the next agent
         self.agent_selection = self._agent_selector.next()
 
-        terminate = not((
-            self.state_space["player_1_card_1_alive"] 
-            or self.state_space["player_1_card_2_alive"])
-            and (
-            self.state_space["player_2_card_1_alive"] 
-            or self.state_space["player_2_card_2_alive"]))
+        terminate_before = self.terminated()
 
 
-        if terminate:
-            self.set_game_result(agent)
-
-        # process the action of the current agent
         self.process_action(agent, self.agent_selection, action)
 
+        #self.update_player_action({agent:action})
+        
 
-
-        # Adds .rewards to ._cumulative_rewards
+        if self.terminated() and terminate_before:
+            self.set_game_result(agent)
+             # Adds .rewards to ._cumulative_rewards
+        else:
+            if self.render_mode == "human":
+                self.render(action)
+                
         self._accumulate_rewards()
-
-
-        if self.render_mode == "human":
-            self.render(action)
