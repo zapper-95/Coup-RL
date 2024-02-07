@@ -325,7 +325,7 @@ class CoupEnv(AECEnv):
         elif action == "assassinate":
             if not self.state_space[f"{agent}_card_2_alive"]:
                 self.state_space[f"{agent}_card_2_alive"] = True
-            elif self.state_space[f"{agent}_card_1_alive"]:
+            elif not self.state_space[f"{agent}_card_1_alive"]:
                 self.state_space[f"{agent}_card_1_alive"] = True
         elif action == "exchange":
             card_1, card_2 = self.deck.draw_card_no_shuffle(), self.deck.draw_card_no_shuffle()
@@ -360,6 +360,11 @@ class CoupEnv(AECEnv):
                 + int(self.state_space[f"{self.agents[other_indx]}_card_2_alive"])
                 ))
         self.rewards[agent] = reward
+    
+    def reset_game_result(self):
+        for agent in self.agents:
+            self.terminations[agent] = False
+            self.rewards[agent] = 0
 
 
     def action_legal(self, agent:int, action:int) -> bool:
@@ -439,17 +444,20 @@ class CoupEnv(AECEnv):
 
         terminate_before = self.terminated()
 
-
         self.process_action(agent, self.agent_selection, action)
 
         #self.update_player_action({agent:action})
         
 
-        if self.terminated() and terminate_before:
+        if self.terminated():
             self.set_game_result(agent)
-             # Adds .rewards to ._cumulative_rewards
         else:
-            if self.render_mode == "human":
-                self.render(action)
-                
+            self.reset_game_result()
+
+            
+        
+        if self.render_mode == "human":
+            self.render(action)
+
+        # Adds .rewards to ._cumulative_rewards
         self._accumulate_rewards()
