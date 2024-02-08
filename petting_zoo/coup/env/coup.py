@@ -84,6 +84,8 @@ class CoupEnv(AECEnv):
             "steal": ["ambassador", "captain"],   
         }
 
+        self.final_actions = ["counteract", "challenge"]
+
         self.no_challenge_actions = ["income", "foreign_aid", "coup", None, "challenge"]
 
         self.player_turn = 0
@@ -442,9 +444,13 @@ class CoupEnv(AECEnv):
         # get the next agent
         self.agent_selection = self._agent_selector.next()
 
-        terminate_before = self.terminated()
 
-        self.process_action(agent, self.agent_selection, action)
+        # stops the action if it is not counteract or challenged if the player is currently in a dead state
+        take_action = not self.terminated() or (self.terminated() and (self.get_action_string(action) in self.final_actions))
+
+
+        if take_action:
+            self.process_action(agent, self.agent_selection, action)
 
         #self.update_player_action({agent:action})
         
@@ -456,7 +462,7 @@ class CoupEnv(AECEnv):
 
             
         
-        if self.render_mode == "human":
+        if take_action and self.render_mode == "human":
             self.render(action)
 
         # Adds .rewards to ._cumulative_rewards
