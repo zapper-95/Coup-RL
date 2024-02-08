@@ -6,16 +6,17 @@ class Deck():
         self.shuffle()
 
     def draw_card(self):
-        random.shuffle(self.deck)
-        return self.deck.pop()
+        return self.deck.pop(0)
     
     def add_card(self, card):
         self.deck.append(card)
-        #random.shuffle(self.deck)
 
-    def draw_card_no_shuffle(self):
+    def draw_bottom_card(self):
         """For when exchange is correctly challenged"""
         return self.deck.pop()
+    
+    def peek_card(self, index):
+        return self.deck[index]
 
     def shuffle(self):
         random.shuffle(self.deck)

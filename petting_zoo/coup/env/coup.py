@@ -342,7 +342,7 @@ class CoupEnv(AECEnv):
             elif not self.state_space[f"{agent}_card_1_alive"]:
                 self.state_space[f"{agent}_card_1_alive"] = True
         elif action == "exchange":
-            card_1, card_2 = self.deck.draw_card_no_shuffle(), self.deck.draw_card_no_shuffle()
+            card_1, card_2 = self.deck.draw_bottom_card(), self.deck.draw_bottom_card()
             
             self.deck.add_card(self.state_space[f"{other_agent}_card_1"])
             self.deck.add_card(self.state_space[f"{other_agent}_card_2"])
@@ -385,13 +385,28 @@ class CoupEnv(AECEnv):
         action = self.get_action_string(action)
         alive_cards = []
 
-        for j in range(2):
-            if self.state_space[f"{agent}_card_{j+1}_alive"]:
-                alive_cards.append(self.state_space[f"{agent}_card_{j+1}"])
+        if action != "exchange":
+            for j in range(2):
+                if self.state_space[f"{agent}_card_{j+1}_alive"]:
+                    alive_cards.append(self.state_space[f"{agent}_card_{j+1}"])
+        else:
+            temp = [self.deck.draw_bottom_card(), self.deck.draw_bottom_card()]
+            
+            if not self.state_space[f"{agent}_card_1_alive"]:
+                self.deck.add_card(temp.pop())
+            
+            # store a copy and return both cards to the deck
+                
+            alive_cards = temp.copy()
+
+            for card in temp:
+                self.deck.add_card(card)
+            
 
         if action in self.action_card.keys():
             if not self.action_card[action] in alive_cards:
                 return False
+                
             
         return True
         
