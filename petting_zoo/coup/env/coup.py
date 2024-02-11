@@ -172,47 +172,77 @@ class CoupEnv(AECEnv):
 
     def observe(self, agent:str):
         """Returns the observation of a given player. This is imperfect information, as the player cannot see the other player's cards."""
-        if agent == "player_1":
-
-            player_2_card_1 = self.state_space["player_2_card_1"] if not self.state_space["player_2_card_1_alive"] else None
-            player_2_card_2 = self.state_space["player_2_card_2"] if not self.state_space["player_2_card_2_alive"] else None
-
-            return np.array(
-                [self.state_space["player_1_card_1"],
-                 self.state_space["player_1_card_2"],
-                 self.state_space["player_1_card_1_alive"],
-                 self.state_space["player_1_card_2_alive"],
-                 self.state_space["player_1_coins"],
-                 self.state_space["player_1_action"],
-
-                 player_2_card_1,
-                 player_2_card_2,
-                 self.state_space["player_2_coins"],
-                 self.state_space["player_2_action"],
-
-                 ]
-                )
-        elif agent == "player_2":
+        # other_player_card_1 = self.state_space[f"{agent}_card_1"] if self.state_space[f"{agent}_card_1_alive"] else None
+        # other_card_2 = self.state_space[f"{agent}_card_2"] if self.state_space[f"{agent}_card_2_alive"] else None
+        # other_agent = [other for other in self.agents if other != agent][0] 
+        other_agent = "player_2" if agent == "player_1" else "player_1"
 
 
-            player_1_card_1 = self.state_space["player_1_card_1"] if not self.state_space["player_1_card_1_alive"] else None
-            player_1_card_2 = self.state_space["player_1_card_2"] if not self.state_space["player_1_card_2_alive"] else None
+        other_card_1 = self.state_space[f"{other_agent}_card_1"] if not self.state_space[f"{other_agent}_card_1_alive"] else None
+        other_card_2 = self.state_space[f"{other_agent}_card_2"] if not self.state_space[f"{other_agent}_card_2_alive"] else None
 
-            return np.array(
-                [self.state_space["player_2_card_1"],
-                 self.state_space["player_2_card_2"],
-                 self.state_space["player_2_card_1_alive"],
-                 self.state_space["player_2_card_2_alive"],
-                 self.state_space["player_2_coins"],
-                 self.state_space["player_2_action"],
 
-                 player_1_card_1,
-                 player_1_card_2,
-                 self.state_space["player_1_coins"],
-                 self.state_space["player_1_action"],
-                 ]
-                )
-    
+
+        return np.array(
+            [  self.state_space[f"{agent}_card_1"],
+                self.state_space[f"{agent}_card_2"],
+                self.state_space[f"{agent}_card_1_alive"],
+                self.state_space[f"{agent}_card_2_alive"],
+                self.state_space[f"{agent}_coins"],
+                self.state_space[f"{agent}_action"],
+                other_card_1,
+                other_card_2,
+                self.state_space[f"{other_agent}_coins"],
+                self.state_space[f"{other_agent}_action"]
+
+            ]
+
+
+        )
+        
+        
+        
+        # if agent == "player_1":
+
+        #     player_2_card_1 = self.state_space["player_2_card_1"] if not self.state_space["player_2_card_1_alive"] else None
+        #     player_2_card_2 = self.state_space["player_2_card_2"] if not self.state_space["player_2_card_2_alive"] else None
+
+        #     return np.array(
+        #         [self.state_space["player_1_card_1"],
+        #          self.state_space["player_1_card_2"],
+        #          self.state_space["player_1_card_1_alive"],
+        #          self.state_space["player_1_card_2_alive"],
+        #          self.state_space["player_1_coins"],
+        #          self.state_space["player_1_action"],
+
+        #          player_2_card_1,
+        #          player_2_card_2,
+        #          self.state_space["player_2_coins"],
+        #          self.state_space["player_2_action"],
+
+        #          ]
+        #         )
+        # elif agent == "player_2":
+
+
+        #     player_1_card_1 = self.state_space["player_1_card_1"] if not self.state_space["player_1_card_1_alive"] else None
+        #     player_1_card_2 = self.state_space["player_1_card_2"] if not self.state_space["player_1_card_2_alive"] else None
+
+        # return np.array(
+        #     [self.state_space[f"{agent}_card_1"],
+        #         self.state_space[f"player_2_card_2"],
+        #         self.state_space["player_2_card_1_alive"],
+        #         self.state_space["player_2_card_2_alive"],
+        #         self.state_space["player_2_coins"],
+        #         self.state_space["player_2_action"],
+
+        #         player_1_card_1,
+        #         player_1_card_2,
+        #         self.state_space["player_1_coins"],
+        #         self.state_space["player_1_action"],
+        #         ]
+        #     )
+
     def reset(self, seed=None, options=None):
 
         self.agents = [f"player_{i+1}" for i in range(2)]
