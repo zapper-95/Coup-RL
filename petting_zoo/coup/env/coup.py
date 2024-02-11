@@ -21,6 +21,7 @@ ACTIONS = [
     "coup",
     "counteract",
     "challenge",
+    "pass",
 ]
 NUM_ITERS = 100
 
@@ -98,7 +99,7 @@ class CoupEnv(AECEnv):
         self.deck = Deck(CARDS)
 
 
-        self._action_spaces = {agent: Discrete(9) for agent in self.agents}
+        self._action_spaces = {agent: Discrete(10) for agent in self.agents}
         
         # the players can see all of the state, but other players hands
         self._observation_spaces = {
@@ -172,47 +173,74 @@ class CoupEnv(AECEnv):
 
     def observe(self, agent:str):
         """Returns the observation of a given player. This is imperfect information, as the player cannot see the other player's cards."""
-        if agent == "player_1":
+        other_agent = "player_2" if agent == "player_1" else "player_1"
 
-            player_2_card_1 = self.state_space["player_2_card_1"] if not self.state_space["player_2_card_1_alive"] else None
-            player_2_card_2 = self.state_space["player_2_card_2"] if not self.state_space["player_2_card_2_alive"] else None
-
-            return np.array(
-                [self.state_space["player_1_card_1"],
-                 self.state_space["player_1_card_2"],
-                 self.state_space["player_1_card_1_alive"],
-                 self.state_space["player_1_card_2_alive"],
-                 self.state_space["player_1_coins"],
-                 self.state_space["player_1_action"],
-
-                 player_2_card_1,
-                 player_2_card_2,
-                 self.state_space["player_2_coins"],
-                 self.state_space["player_2_action"],
-
-                 ]
-                )
-        elif agent == "player_2":
+        other_card_1 = self.state_space[f"{other_agent}_card_1"] if not self.state_space[f"{other_agent}_card_1_alive"] else None
+        other_card_2 = self.state_space[f"{other_agent}_card_2"] if not self.state_space[f"{other_agent}_card_2_alive"] else None
 
 
-            player_1_card_1 = self.state_space["player_1_card_1"] if not self.state_space["player_1_card_1_alive"] else None
-            player_1_card_2 = self.state_space["player_1_card_2"] if not self.state_space["player_1_card_2_alive"] else None
+        legal_moves = []
+        
+        other_action = self.state_space[f"{other_agent}_action"]
+        other_action_str = self.get_action_string(other_action)
 
-            return np.array(
-                [self.state_space["player_2_card_1"],
-                 self.state_space["player_2_card_2"],
-                 self.state_space["player_2_card_1_alive"],
-                 self.state_space["player_2_card_2_alive"],
-                 self.state_space["player_2_coins"],
-                 self.state_space["player_2_action"],
+        # get legal moves
+        if other_action_str == "counteract":
+            # can only challenge or pass
+            legal_moves = [8, 9]
+        elif other_action_str in ["challenge", None, "pass"]:
+            # can do anything except counteract, challenge, or pass
+            legal_moves = [0, 1, 2, 3, 4, 5, 6]
+        else:
+            legal_moves = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+            
 
-                 player_1_card_1,
-                 player_1_card_2,
-                 self.state_space["player_1_coins"],
-                 self.state_space["player_1_action"],
-                 ]
-                )
-    
+        if self.state_space[f"{agent}_coins"] >= 10 and other_action_str != "counteract":
+            # have to coup
+            legal_moves = [6]
+
+
+        if self.state_space[f"{agent}_coins"] < 7:
+            # can't coup
+            legal_moves = [x for x in legal_moves if x != 6]
+
+        if self.state_space[f"{agent}_coins"] < 3:
+            # can't assassinate
+            legal_moves = [x for x in legal_moves if x != 3]
+
+        if not self.can_counteract(other_action):
+            # can't counteract
+            legal_moves = [x for x in legal_moves if x != 7]
+
+        if not self.can_challenge(other_action):
+            # can't challenge
+            legal_moves = [x for x in legal_moves if x != 8]
+
+
+        action_mask = np.zeros(len(ACTIONS), "int8")
+
+        for move in legal_moves:
+            action_mask[move] = 1
+
+        observation = np.array(
+            [  self.state_space[f"{agent}_card_1"],
+                self.state_space[f"{agent}_card_2"],
+                self.state_space[f"{agent}_card_1_alive"],
+                self.state_space[f"{agent}_card_2_alive"],
+                self.state_space[f"{agent}_coins"],
+                self.state_space[f"{agent}_action"],
+                other_card_1,
+                other_card_2,
+                self.state_space[f"{other_agent}_coins"],
+                self.state_space[f"{other_agent}_action"]
+            ]
+        )
+
+
+
+        return {"observation": observation, "action_mask": action_mask}
+        
+
     def reset(self, seed=None, options=None):
 
         self.agents = [f"player_{i+1}" for i in range(2)]
@@ -312,6 +340,8 @@ class CoupEnv(AECEnv):
                     # if it was not legal, let the player play their initial action again
                     self.process_action(agent, other_agent, self.state_space[f"{agent}_action"])
                     self.loose_card(other_agent)
+        elif action_str == "pass":
+            pass    
         else:
             # action did not go through
             action=None
@@ -342,7 +372,7 @@ class CoupEnv(AECEnv):
             elif not self.state_space[f"{agent}_card_1_alive"]:
                 self.state_space[f"{agent}_card_1_alive"] = True
         elif action == "exchange":
-            card_1, card_2 = self.deck.draw_card_no_shuffle(), self.deck.draw_card_no_shuffle()
+            card_1, card_2 = self.deck.draw_bottom_card(), self.deck.draw_bottom_card()
             
             self.deck.add_card(self.state_space[f"{other_agent}_card_1"])
             self.deck.add_card(self.state_space[f"{other_agent}_card_2"])
@@ -385,13 +415,28 @@ class CoupEnv(AECEnv):
         action = self.get_action_string(action)
         alive_cards = []
 
-        for j in range(2):
-            if self.state_space[f"{agent}_card_{j+1}_alive"]:
-                alive_cards.append(self.state_space[f"{agent}_card_{j+1}"])
+        if action != "exchange":
+            for j in range(2):
+                if self.state_space[f"{agent}_card_{j+1}_alive"]:
+                    alive_cards.append(self.state_space[f"{agent}_card_{j+1}"])
+        else:
+            temp = [self.deck.draw_bottom_card(), self.deck.draw_bottom_card()]
+            
+            if not self.state_space[f"{agent}_card_1_alive"]:
+                self.deck.add_card(temp.pop())
+            
+            # store a copy and return both cards to the deck
+                
+            alive_cards = temp.copy()
+
+            for card in temp:
+                self.deck.add_card(card)
+            
 
         if action in self.action_card.keys():
             if not self.action_card[action] in alive_cards:
                 return False
+                
             
         return True
         
