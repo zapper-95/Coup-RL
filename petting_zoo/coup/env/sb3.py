@@ -77,7 +77,8 @@ def train_action_mask(env_fn, steps=10_000, seed=0, **env_kwargs):
     model.set_random_seed(seed)
     model.learn(total_timesteps=steps)
 
-    model.save(f"{env.unwrapped.metadata.get('name')}_{time.strftime('%Y%m%d-%H%M%S')}")
+    model.save(f"models/{env.unwrapped.metadata.get('name')}_{time.strftime('%d-%m-%Y_%H-%M-%S')}")
+
 
     print("Model has been saved.")
 
@@ -96,7 +97,7 @@ def eval_action_mask(env_fn, num_games=100, render_mode=None, **env_kwargs):
 
     try:
         latest_policy = max(
-            glob.glob(f"{env.metadata['name']}*.zip"), key=os.path.getctime
+            glob.glob(f"models/{env.metadata['name']}*.zip"), key=os.path.getctime
         )
     except ValueError:
         print("Policy not found.")
