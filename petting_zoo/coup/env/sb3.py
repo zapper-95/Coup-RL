@@ -160,6 +160,24 @@ def eval_action_mask(env_fn, num_games=100, render_mode=None, **env_kwargs):
     print("Final scores: ", scores)
     return round_rewards, total_rewards, winrate, scores
 
+def rename_model(env_fn, winrate, **env_kwargs):
+    env = env_fn.env(render_mode=None, **env_kwargs)
+    try:
+        latest_policy = max(
+            glob.glob(f"models/{env.metadata['name']}*.zip"), key=os.path.getctime
+        )
+    except ValueError:
+        print("Policy not found.")
+        exit(0)
+
+    # extract the directory and the filename
+    directory, filename = os.path.split(latest_policy)
+
+    # construct the new filename with win rate
+    new_filename = f"{directory}/{winrate:.2f}-{filename}"
+    
+    os.rename(latest_policy, new_filename)
+
 
 if __name__ == "__main__":
     env_fn = coup_v0
@@ -175,7 +193,10 @@ if __name__ == "__main__":
     train_action_mask(env_fn, steps=20_480, seed=0, **env_kwargs)
 
     # Evaluate 100 games against a random agent (winrate should be ~80%)
-    eval_action_mask(env_fn, num_games=100, render_mode=None, **env_kwargs)
-
+    _,_,winrate,_ =eval_action_mask(env_fn, num_games=100, render_mode=None, **env_kwargs)
+    
     # Watch two games vs a random agent
     eval_action_mask(env_fn, num_games=2, render_mode="human", **env_kwargs)
+
+    # rename model to include the winrate
+    rename_model(env_fn, winrate=winrate, **env_kwargs)
