@@ -2,7 +2,7 @@ from pettingzoo import AECEnv
 from pettingzoo.utils import agent_selector, wrappers
 #from player import Player
 from deck import Deck
-from gymnasium.spaces import Discrete
+from gymnasium.spaces import Discrete, Dict, MultiBinary
 import gymnasium
 import numpy as np
 
@@ -22,6 +22,7 @@ ACTIONS = [
     "counteract",
     "challenge",
     "pass",
+    "none"
 ]
 NUM_ITERS = 100
 
@@ -91,6 +92,8 @@ class CoupEnv(AECEnv):
 
         self.player_turn = 0
         self.agents = [f"player_{i+1}" for i in range(2)]
+        self.possible_agents = self.agents[:]
+
 
         # dictionary of the agent names to their index
         self.agent_name_mapping = dict(
@@ -99,12 +102,34 @@ class CoupEnv(AECEnv):
         self.deck = Deck(CARDS)
 
 
-        self._action_spaces = {agent: Discrete(10) for agent in self.agents}
-        
+        self._action_spaces = {agent: Discrete(11) for agent in self.agents}
+
         # the players can see all of the state, but other players hands
         self._observation_spaces = {
-            agent: Discrete(10) for agent in self.agents
+            agent: Dict(
+                {
+                    "observation": Dict(
+                        {   
+                            f"{agent}_card_1": Discrete(len(CARDS)),
+                            f"{agent}_card_2": Discrete(len(CARDS)),
+                            f"{agent}_card_1_alive": Discrete(2),
+                            f"{agent}_card_2_alive": Discrete(2),
+                            f"{agent}_coins": Discrete(12),
+                            f"{agent}_action": Discrete(len(ACTIONS)+1),
+
+                            # additional state for the card to hide it if it is alive
+                            f"{self.agents[1-self.agent_name_mapping[agent]]}_card_1": Discrete(len(CARDS)+1),
+                            f"{self.agents[1-self.agent_name_mapping[agent]]}_card_2": Discrete(len(CARDS)+1),
+                            f"{self.agents[1-self.agent_name_mapping[agent]]}_coins": Discrete(12),
+                            f"{self.agents[1-self.agent_name_mapping[agent]]}_action": Discrete(len(ACTIONS)),
+                        }
+                    ),
+                    "action_mask": MultiBinary(len(ACTIONS)),
+                }
+            )
+            for agent in self.agents
         }
+
 
         
     def get_action_string(self, action_id:int) -> str:
@@ -121,9 +146,6 @@ class CoupEnv(AECEnv):
         else:
             self.state_space["player_2_action"] = action["player_2"]
 
-    def remove_actions(self):
-        self.state_space["player_1_action"] = None
-        self.state_space["player_2_action"] = None
     
     def observation_space(self, agent):
         return self._observation_spaces[agent]
@@ -171,13 +193,9 @@ class CoupEnv(AECEnv):
         print()
 
 
-    def observe(self, agent:str):
+    def observe(self, agent):
         """Returns the observation of a given player. This is imperfect information, as the player cannot see the other player's cards."""
         other_agent = "player_2" if agent == "player_1" else "player_1"
-
-        other_card_1 = self.state_space[f"{other_agent}_card_1"] if not self.state_space[f"{other_agent}_card_1_alive"] else None
-        other_card_2 = self.state_space[f"{other_agent}_card_2"] if not self.state_space[f"{other_agent}_card_2_alive"] else None
-
 
         legal_moves = []
         
@@ -222,19 +240,42 @@ class CoupEnv(AECEnv):
         for move in legal_moves:
             action_mask[move] = 1
 
-        observation = np.array(
-            [  self.state_space[f"{agent}_card_1"],
-                self.state_space[f"{agent}_card_2"],
-                self.state_space[f"{agent}_card_1_alive"],
-                self.state_space[f"{agent}_card_2_alive"],
-                self.state_space[f"{agent}_coins"],
-                self.state_space[f"{agent}_action"],
-                other_card_1,
-                other_card_2,
-                self.state_space[f"{other_agent}_coins"],
-                self.state_space[f"{other_agent}_action"]
-            ]
-        )
+
+        # observation = np.array(
+        #     [   CARDS.index(self.state_space[f"{agent}_card_1"]),
+        #         CARDS.index(self.state_space[f"{agent}_card_2"]),
+        #         int(self.state_space[f"{agent}_card_1_alive"]),
+        #         int(self.state_space[f"{agent}_card_2_alive"]),
+        #         self.state_space[f"{agent}_coins"],
+        #         self.state_space[f"{agent}_action"],
+        #         CARDS.index(self.state_space[f"{other_agent}_card_1"]),
+        #         CARDS.index(self.state_space[f"{other_agent}_card_2"]),
+        #         self.state_space[f"{other_agent}_coins"],
+        #         self.state_space[f"{other_agent}_action"]
+        #     ]
+        # )
+
+        observation = { 
+                        f"{agent}_card_1": CARDS.index(self.state_space[f"{agent}_card_1"]),
+                        f"{agent}_card_2": CARDS.index(self.state_space[f"{agent}_card_2"]),
+                        f"{agent}_card_1_alive": int(self.state_space[f"{agent}_card_1_alive"]),
+                        f"{agent}_card_2_alive": int(self.state_space[f"{agent}_card_2_alive"]),
+                        f"{agent}_coins": self.state_space[f"{agent}_coins"],
+                        f"{agent}_action": self.state_space[f"{agent}_action"],
+
+                        # additional state for the card to hide it if it is alive
+                        f"{other_agent}_card_1": CARDS.index(self.state_space[f"{other_agent}_card_1"]),
+                        f"{other_agent}_card_2": CARDS.index(self.state_space[f"{other_agent}_card_2"]),
+                        f"{other_agent}_coins": self.state_space[f"{other_agent}_coins"],
+                        f"{other_agent}_action": self.state_space[f"{other_agent}_action"],   
+                }
+
+        # hide the other player's cards if they are alive
+        if self.state_space[f"{other_agent}_card_1_alive"]:
+            observation[f"{other_agent}_card_1"] = len(CARDS)
+        
+        if self.state_space[f"{other_agent}_card_2_alive"]:
+            observation[f"{other_agent}_card_2"] = len(CARDS)
 
 
 
@@ -249,8 +290,8 @@ class CoupEnv(AECEnv):
         self.terminations = {agent: False for agent in self.agents}
         self.truncations = {agent: False for agent in self.agents}
         self.infos = {agent: {} for agent in self.agents}
-        self.state = {agent: None for agent in self.agents}
-        self.observations = {agent: None for agent in self.agents}
+        #self.state = {agent: None for agent in self.agents}
+        #self.observations = {agent: None for agent in self.agents}
         self.num_moves = 0
 
         # allows stepping through the agents
@@ -273,8 +314,8 @@ class CoupEnv(AECEnv):
             "player_2_card_2_alive": True,
             "player_1_coins": 1,
             "player_2_coins": 1,
-            "player_1_action": None,
-            "player_2_action": None
+            "player_1_action": len(ACTIONS)-1,
+            "player_2_action": len(ACTIONS)-1
         }
 
         self.player_turn = 0
@@ -287,7 +328,6 @@ class CoupEnv(AECEnv):
             self.state_space[f"{agent}_card_1_alive"] = False
         else:
             self.state_space[f"{agent}_card_2_alive"] = False
-
             
     def process_action(self, agent:str, other_agent:str, action:int) -> None:
         """Processes the action of a player, and updates the state space accordingly."""
@@ -344,7 +384,7 @@ class CoupEnv(AECEnv):
             pass    
         else:
             # action did not go through
-            action=None
+            action = ACTIONS.index("none")
 
 
 
