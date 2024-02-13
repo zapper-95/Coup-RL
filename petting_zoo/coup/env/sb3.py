@@ -123,9 +123,7 @@ def eval_action_mask(env_fn, num_games=100, render_mode=None, **env_kwargs):
                     != env.rewards[env.possible_agents[1]]
                 ):
                     winner = max(env.rewards, key=env.rewards.get)
-                    scores[winner] += env.rewards[
-                        winner
-                    ]  # only tracks the largest reward (winner of game)
+                    scores[winner] += 1 # only tracks the largest reward (winner of game)
                 # Also track negative and positive rewards (penalizes illegal moves)
                 for a in env.possible_agents:
                     total_rewards[a] += env.rewards[a]
@@ -148,7 +146,7 @@ def eval_action_mask(env_fn, num_games=100, render_mode=None, **env_kwargs):
     if sum(scores.values()) == 0:
         winrate = 0
     else:
-        winrate = scores[env.possible_agents[1]] / sum(scores.values())
+        winrate = scores[env.possible_agents[1]] / num_games
     print("Rewards by round: ", round_rewards)
     print("Total rewards (incl. negative rewards): ", total_rewards)
     print("Winrate: ", winrate)
@@ -169,7 +167,7 @@ def rename_model(env_fn, winrate, **env_kwargs):
     directory, filename = os.path.split(latest_policy)
 
     # construct the new filename with win rate
-    new_filename = f"{directory}/{winrate:.2f}-{filename}"
+    new_filename = f"{directory}/{winrate:.2f}_{filename}"
     
     os.rename(latest_policy, new_filename)
 
@@ -180,7 +178,7 @@ if __name__ == "__main__":
     env_kwargs = {}
 
     # Train a model against itself
-    #train_action_mask(env_fn, steps=600_000, seed=42, **env_kwargs)
+    train_action_mask(env_fn, steps=20_000, seed=42, **env_kwargs)
 
     # Evaluate 100 games against a random agent
     _,_,winrate,_ =eval_action_mask(env_fn, num_games=100, render_mode=None, **env_kwargs)
