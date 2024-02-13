@@ -81,8 +81,8 @@ class CoupEnv(AECEnv):
 
 
         self.action_counter_card = {
-            "foreign_aid":"duke",
-            "assassinate":"contessa",
+            "foreign_aid":["duke"],
+            "assassinate":["contessa"],
             "steal": ["ambassador", "captain"],   
         }
 
@@ -206,7 +206,7 @@ class CoupEnv(AECEnv):
             # can only challenge or pass
             legal_moves = [8, 9]
         elif other_action_str == "challenge" and player_past_action_str != "counteract":
-            # if the other player challenged a normal action, skip a turn
+            # if the other player challenged a normal action, pass a turn
             legal_moves = [9]   
         elif other_action_str in ["none", "pass"] or (other_action_str == "challenge" and player_past_action_str == "counteract"):
             # can do anything except counteract, challenge, or pass
@@ -352,7 +352,7 @@ class CoupEnv(AECEnv):
             self.reverse_action(other_agent, agent, self.state_space[f"{other_agent}_action"])
             
         elif action_str == "challenge" and self.can_challenge(self.state_space[f"{other_agent}_action"]):
-            if self.state_space[f"{other_agent}_action"] != "counteract":
+            if self.get_action_string(self.state_space[f"{other_agent}_action"]) != "counteract":
                 # if a normal action is being challenged
                 
                 # check whether that action was legal
@@ -371,7 +371,7 @@ class CoupEnv(AECEnv):
                     self.process_action(agent, other_agent, self.state_space[f"{agent}_action"])
                     self.loose_card(other_agent)
         elif action_str == "pass":
-            pass    
+            pass        
         else:
             # action did not go through
             action = ACTIONS.index("none")
@@ -487,6 +487,8 @@ class CoupEnv(AECEnv):
         
         # cards of the counteracting player
         cards = [self.state_space[f"{agent}_card_1"], self.state_space[f"{agent}_card_2"]]
+        # only keep the cards that are alive
+        cards = [card for card in cards if self.state_space[f"{agent}_card_{cards.index(card)+1}_alive"]]
 
         # check that the action they are stopping can be counteracted
         if self.can_counteract(stop_action):
@@ -494,9 +496,10 @@ class CoupEnv(AECEnv):
             stop_action = self.get_action_string(stop_action)
 
             # check that they have at least one of the required cards to stop the action
-            if len(set(cards).intersection(set(self.action_counter_card[stop_action]))) > 0:
-                return True
 
+            for card in cards:
+                if card in self.action_counter_card[stop_action]:
+                    return True
         return False
 
     def step(self, action):
@@ -528,8 +531,7 @@ class CoupEnv(AECEnv):
 
 
         # stops the action if it is not counteract or challenged if the player is currently in a dead state
-        take_action = (action != ACTIONS.index("pass")
-                        and
+        take_action = (
                         (not self.terminated()
                         or (self.terminated()
                         and (self.get_action_string(action)
@@ -544,7 +546,7 @@ class CoupEnv(AECEnv):
         else:
             self.reset_game_result()      
         
-        if take_action and self.render_mode == "human":
+        if take_action and self.get_action_string(action) != "pass" and self.render_mode == "human":
             self.render(action)
 
         # Adds .rewards to ._cumulative_rewards
