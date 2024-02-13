@@ -206,7 +206,7 @@ class CoupEnv(AECEnv):
             # can only challenge or pass
             legal_moves = [8, 9]
         elif other_action_str == "challenge" and player_past_action_str != "counteract":
-            # if the other player challenged a normal action, skip a turn
+            # if the other player challenged a normal action, pass a turn
             legal_moves = [9]   
         elif other_action_str in ["none", "pass"] or (other_action_str == "challenge" and player_past_action_str == "counteract"):
             # can do anything except counteract, challenge, or pass
@@ -371,7 +371,7 @@ class CoupEnv(AECEnv):
                     self.process_action(agent, other_agent, self.state_space[f"{agent}_action"])
                     self.loose_card(other_agent)
         elif action_str == "pass":
-            pass    
+            pass        
         else:
             # action did not go through
             action = ACTIONS.index("none")
@@ -528,8 +528,7 @@ class CoupEnv(AECEnv):
 
 
         # stops the action if it is not counteract or challenged if the player is currently in a dead state
-        take_action = (action != ACTIONS.index("pass")
-                        and
+        take_action = (
                         (not self.terminated()
                         or (self.terminated()
                         and (self.get_action_string(action)
@@ -544,7 +543,7 @@ class CoupEnv(AECEnv):
         else:
             self.reset_game_result()      
         
-        if take_action and self.render_mode == "human":
+        if take_action and self.get_action_string(action) != "pass" and self.render_mode == "human":
             self.render(action)
 
         # Adds .rewards to ._cumulative_rewards
