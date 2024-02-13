@@ -167,7 +167,7 @@ def rename_model(env_fn, winrate, **env_kwargs):
     directory, filename = os.path.split(latest_policy)
 
     # construct the new filename with win rate
-    new_filename = f"{directory}/{winrate:.2f}_{filename}"
+    new_filename = f"{directory}/{winrate}_{filename}"
     
     os.rename(latest_policy, new_filename)
 
@@ -178,7 +178,7 @@ if __name__ == "__main__":
     env_kwargs = {}
 
     # Train a model against itself
-    train_action_mask(env_fn, steps=20_000, seed=42, **env_kwargs)
+    train_action_mask(env_fn, steps=2_000, seed=42, **env_kwargs)
 
     # Evaluate 100 games against a random agent
     _,_,winrate,_ =eval_action_mask(env_fn, num_games=100, render_mode=None, **env_kwargs)

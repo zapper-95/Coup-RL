@@ -1,13 +1,12 @@
 from pettingzoo import AECEnv
 from pettingzoo.utils import agent_selector, wrappers
-#from player import Player
-from deck import Deck
 from gymnasium.spaces import Discrete, Dict, MultiDiscrete, MultiBinary
 import gymnasium
 import numpy as np
+import random
 
 
-# based on code from https://pettingzoo.farama.org/content/environment_creation/
+# pettingzoo environment setup adapted from this code https://pettingzoo.farama.org/content/environment_creation/
 
 
 CARDS = ["ambassador", "assassin", "captain", "contessa", "duke"]
@@ -168,10 +167,6 @@ class CoupEnv(AECEnv):
 
         print("----------------")
         print(f"Action: {self.get_action_string(action)}")
-        # if self.player_turn == 0:
-        #     print(f"Action: {self.state_space['player_1_action']}")
-        # else:
-        #     print(f"Action: {self.state_space['player_2_action']}")
         print("----------------")
 
 
@@ -551,3 +546,25 @@ class CoupEnv(AECEnv):
 
         # Adds .rewards to ._cumulative_rewards
         self._accumulate_rewards()
+
+class Deck():
+    def __init__(self, cards) -> None:
+        deck = [element for element in cards for _ in range(3)]
+        self.deck  = deck
+        self.shuffle()
+
+    def draw_card(self):
+        return self.deck.pop(0)
+    
+    def add_card(self, card):
+        self.deck.append(card)
+
+    def draw_bottom_card(self):
+        """For when exchange is correctly challenged"""
+        return self.deck.pop()
+    
+    def peek_card(self, index):
+        return self.deck[index]
+
+    def shuffle(self):
+        random.shuffle(self.deck)
