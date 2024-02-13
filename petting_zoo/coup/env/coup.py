@@ -67,7 +67,7 @@ class CoupEnv(AECEnv):
             "player_2_card_1_alive": True,
             "player_2_card_2_alive": True,
             "player_1_coins": 1,
-            "player_2_coins": 1,
+            "player_2_coins": 2,
             "player_1_action": ACTIONS.index("none"),
             "player_2_action": ACTIONS.index("none")
         }
@@ -294,7 +294,7 @@ class CoupEnv(AECEnv):
             "player_2_card_1_alive": True,
             "player_2_card_2_alive": True,
             "player_1_coins": 1,
-            "player_2_coins": 1,
+            "player_2_coins": 2,
             "player_1_action": ACTIONS.index("none"),
             "player_2_action": ACTIONS.index("none")
         }
