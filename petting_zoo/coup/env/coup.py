@@ -198,20 +198,29 @@ class CoupEnv(AECEnv):
         other_action = self.state_space[f"{other_agent}_action"]
         other_action_str = self.get_action_string(other_action)
 
+        player_past_action = self.state_space[f"{agent}_action"]
+        player_past_action_str = self.get_action_string(player_past_action)
+
         # get legal moves
         if other_action_str == "counteract":
             # can only challenge or pass
             legal_moves = [8, 9]
-        elif other_action_str in ["challenge", "none", "pass"]:
+        elif other_action_str == "challenge" and player_past_action_str != "counteract":
+            # if the other player challenged a normal action, skip a turn
+            legal_moves = [9]   
+        elif other_action_str in ["none", "pass"] or (other_action_str == "challenge" and player_past_action_str == "counteract"):
             # can do anything except counteract, challenge, or pass
             legal_moves = [0, 1, 2, 3, 4, 5, 6]
         else:
+            # all moves except pass
             legal_moves = [0, 1, 2, 3, 4, 5, 6, 7, 8]
             
 
-        if self.state_space[f"{agent}_coins"] >= 10 and other_action_str != "counteract":
-            # have to coup
-            legal_moves = [6]
+        if self.state_space[f"{agent}_coins"] >= 10:
+            # have to coup, if legal
+            if 6 in legal_moves:
+                legal_moves = [6]
+
 
 
         if self.state_space[f"{agent}_coins"] < 7:
@@ -515,8 +524,16 @@ class CoupEnv(AECEnv):
         self.agent_selection = self._agent_selector.next()
 
 
+        
+
+
         # stops the action if it is not counteract or challenged if the player is currently in a dead state
-        take_action = not self.terminated() or (self.terminated() and (self.get_action_string(action) in self.final_actions))
+        take_action = (action != ACTIONS.index("pass")
+                        and
+                        (not self.terminated()
+                        or (self.terminated()
+                        and (self.get_action_string(action)
+                        in self.final_actions))))
 
 
         if take_action:
