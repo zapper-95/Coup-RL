@@ -81,8 +81,8 @@ class CoupEnv(AECEnv):
 
 
         self.action_counter_card = {
-            "foreign_aid":"duke",
-            "assassinate":"contessa",
+            "foreign_aid":["duke"],
+            "assassinate":["contessa"],
             "steal": ["ambassador", "captain"],   
         }
 
@@ -352,7 +352,7 @@ class CoupEnv(AECEnv):
             self.reverse_action(other_agent, agent, self.state_space[f"{other_agent}_action"])
             
         elif action_str == "challenge" and self.can_challenge(self.state_space[f"{other_agent}_action"]):
-            if self.state_space[f"{other_agent}_action"] != "counteract":
+            if self.get_action_string(self.state_space[f"{other_agent}_action"]) != "counteract":
                 # if a normal action is being challenged
                 
                 # check whether that action was legal
@@ -487,6 +487,8 @@ class CoupEnv(AECEnv):
         
         # cards of the counteracting player
         cards = [self.state_space[f"{agent}_card_1"], self.state_space[f"{agent}_card_2"]]
+        # only keep the cards that are alive
+        cards = [card for card in cards if self.state_space[f"{agent}_card_{cards.index(card)+1}_alive"]]
 
         # check that the action they are stopping can be counteracted
         if self.can_counteract(stop_action):
@@ -494,9 +496,10 @@ class CoupEnv(AECEnv):
             stop_action = self.get_action_string(stop_action)
 
             # check that they have at least one of the required cards to stop the action
-            if len(set(cards).intersection(set(self.action_counter_card[stop_action]))) > 0:
-                return True
 
+            for card in cards:
+                if card in self.action_counter_card[stop_action]:
+                    return True
         return False
 
     def step(self, action):
