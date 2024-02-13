@@ -68,8 +68,8 @@ class CoupEnv(AECEnv):
             "player_2_card_2_alive": True,
             "player_1_coins": 1,
             "player_2_coins": 1,
-            "player_1_action": None,
-            "player_2_action": None
+            "player_1_action": ACTIONS.index("none"),
+            "player_2_action": ACTIONS.index("none")
         }
 
         self.action_card = {
@@ -88,7 +88,7 @@ class CoupEnv(AECEnv):
 
         self.final_actions = ["counteract", "challenge"]
 
-        self.no_challenge_actions = ["income", "foreign_aid", "coup", None, "challenge"]
+        self.no_challenge_actions = ["income", "foreign_aid", "coup", "none", "challenge"]
 
         self.player_turn = 0
         self.agents = [f"player_{i+1}" for i in range(2)]
@@ -202,7 +202,7 @@ class CoupEnv(AECEnv):
         if other_action_str == "counteract":
             # can only challenge or pass
             legal_moves = [8, 9]
-        elif other_action_str in ["challenge", None, "pass"]:
+        elif other_action_str in ["challenge", "none", "pass"]:
             # can do anything except counteract, challenge, or pass
             legal_moves = [0, 1, 2, 3, 4, 5, 6]
         else:
@@ -295,8 +295,8 @@ class CoupEnv(AECEnv):
             "player_2_card_2_alive": True,
             "player_1_coins": 1,
             "player_2_coins": 1,
-            "player_1_action": len(ACTIONS)-1,
-            "player_2_action": len(ACTIONS)-1
+            "player_1_action": ACTIONS.index("none"),
+            "player_2_action": ACTIONS.index("none")
         }
 
         self.player_turn = 0

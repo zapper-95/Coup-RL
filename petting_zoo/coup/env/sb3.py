@@ -1,8 +1,10 @@
-"""Uses Stable-Baselines3 to train agents in the Connect Four environment using invalid action masking.
+"""
+Trains a model to play Coup using PPO, by playing it against itself.
+The model is then evaluated against a random agent.
 
-For information about invalid action masking in PettingZoo, see https://pettingzoo.farama.org/api/aec/#action-masking
-For more information about invalid action masking in SB3, see https://sb3-contrib.readthedocs.io/en/master/modules/ppo_mask.html
 
+Adapted from pettingzoo tutorial, originally for Connect 4: 
+Source: https://pettingzoo.farama.org/tutorials/sb3/connect_four/
 Author: Elliot (https://github.com/elliottower)
 """
 import glob
@@ -51,9 +53,6 @@ class SB3ActionMaskWrapper(pettingzoo.utils.BaseWrapper):
 
 
 def mask_fn(env):
-    # Do whatever you'd like in this function to return the action mask
-    # for the current env. In this example, we assume the env has a
-    # helpful method we can rely on.
     return env.action_mask()
 
 
@@ -71,17 +70,14 @@ def train_action_mask(env_fn, steps=10_000, seed=0, **env_kwargs):
     env = ActionMasker(env, mask_fn)  # Wrap to enable masking (SB3 function)
     # MaskablePPO behaves the same as SB3's PPO unless the env is wrapped
     # with ActionMasker. If the wrapper is detected, the masks are automatically
-    # retrieved and used when learning. Note that MaskablePPO does not accept
-    # a new action_mask_fn kwarg, as it did in an earlier draft.
+    # retrieved and used when learning.
     model = MaskablePPO(MaskableActorCriticPolicy, env, verbose=1)
     model.set_random_seed(seed)
     model.learn(total_timesteps=steps)
 
     model.save(f"models/{env.unwrapped.metadata.get('name')}_{time.strftime('%d-%m-%Y_%H-%M-%S')}")
 
-
     print("Model has been saved.")
-
     print(f"Finished training on {str(env.unwrapped.metadata['name'])}.\n")
 
     env.close()
@@ -140,7 +136,6 @@ def eval_action_mask(env_fn, num_games=100, render_mode=None, **env_kwargs):
                 if agent == env.possible_agents[0]:
                     act = env.action_space(agent).sample(action_mask)
                 else:
-                    # Note: PettingZoo expects integer actions # TODO: change chess to cast actions to type int?
                     act = int(
                         model.predict(
                             observation, action_masks=action_mask, deterministic=True
@@ -184,19 +179,14 @@ if __name__ == "__main__":
 
     env_kwargs = {}
 
-    # Evaluation/training hyperparameter notes:
-    # 10k steps: Winrate:  0.76, loss order of 1e-03
-    # 20k steps: Winrate:  0.86, loss order of 1e-04
-    # 40k steps: Winrate:  0.86, loss order of 7e-06
+    # Train a model against itself
+    #train_action_mask(env_fn, steps=600_000, seed=42, **env_kwargs)
 
-    # Train a model against itself (takes ~20 seconds on a laptop CPU)
-    train_action_mask(env_fn, steps=20_480, seed=0, **env_kwargs)
-
-    # Evaluate 100 games against a random agent (winrate should be ~80%)
+    # Evaluate 100 games against a random agent
     _,_,winrate,_ =eval_action_mask(env_fn, num_games=100, render_mode=None, **env_kwargs)
     
     # Watch two games vs a random agent
     eval_action_mask(env_fn, num_games=2, render_mode="human", **env_kwargs)
 
-    # rename model to include the winrate
+    # Rename model to include the winrate
     rename_model(env_fn, winrate=winrate, **env_kwargs)
