@@ -48,28 +48,14 @@ def env(render_mode=None):
 
 class CoupEnv(AECEnv):
     metadata = {
-        "name": "coup",
+        "name": "coup_v0",
     }
 
     def __init__(self, render_mode=None):
         
         
         self.render_mode = render_mode
-        
-        self.state_space = {
-            "player_1_card_1": None,
-            "player_1_card_2": None,
-            "player_2_card_1": None,
-            "player_2_card_2": None,
-            "player_1_card_1_alive": True,
-            "player_1_card_2_alive": True,
-            "player_2_card_1_alive": True,
-            "player_2_card_2_alive": True,
-            "player_1_coins": 1,
-            "player_2_coins": 2,
-            "player_1_action": ACTIONS.index("none"),
-            "player_2_action": ACTIONS.index("none")
-        }
+    
 
         self.action_card = {
             "tax": "duke",
@@ -133,6 +119,13 @@ class CoupEnv(AECEnv):
             return None
         
         return ACTIONS[action_id]
+    
+    def get_card(self, card_id:int) -> str:
+        """Returns the string representation of a card."""
+        if card_id is None or card_id >= len(CARDS):
+            return None
+        
+        return CARDS[card_id]
 
     def update_player_action(self, action:dict[str, int]) -> None:
         """Updates the last action of a given player."""
@@ -149,7 +142,7 @@ class CoupEnv(AECEnv):
         return self._action_spaces[agent]
 
 
-    def render(self, action):
+    def render(self, action=10, display_action=True):
         """
         Renders the environment. In human mode, it can print to terminal, open
         up a graphical window, or open up some other display that a human can see and understand.
@@ -166,8 +159,9 @@ class CoupEnv(AECEnv):
         alive_cards = []
 
         print("----------------")
-        print(f"Action: {self.get_action_string(action)}")
-        print("----------------")
+        if display_action:
+            print(f"Action: {self.get_action_string(action)}")
+            print("----------------")
 
 
         for i in range(2):
@@ -482,9 +476,9 @@ class CoupEnv(AECEnv):
         
         # cards of the counteracting player
         cards = [self.state_space[f"{agent}_card_1"], self.state_space[f"{agent}_card_2"]]
-        # only keep the cards that are alive
-        cards = [card for card in cards if self.state_space[f"{agent}_card_{cards.index(card)+1}_alive"]]
-
+        # only keep the second card if it is alive
+        if not self.state_space[f"{agent}_card_2_alive"]:
+            cards.pop()
         # check that the action they are stopping can be counteracted
         if self.can_counteract(stop_action):
             # action which is being stopped
