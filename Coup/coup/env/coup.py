@@ -544,7 +544,7 @@ class CoupEnv(AECEnv):
 
 
         # end the game if after taking your action, it is still terminated
-        if before_terminate and self.terminated():
+        if self.terminated():
             self.set_game_result()
 
         # Adds .rewards to ._cumulative_rewards
