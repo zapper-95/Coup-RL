@@ -110,7 +110,7 @@ class CoupEnv(AECEnv):
             )
             for agent in self.agents
         }
-
+        self.terminate_turns = 0
 
         
     def get_action_string(self, action_id:int) -> str:
@@ -426,10 +426,6 @@ class CoupEnv(AECEnv):
                     int(self.state_space[f"{self.agents[other_indx]}_card_1_alive"]) 
                     + int(self.state_space[f"{self.agents[other_indx]}_card_2_alive"])
                     ))
-            # if self.state_space[f"{agent}_card_2_alive"]:
-            #     self.rewards[agent] = 1
-            # else:
-            #     self.rewards[agent] = -1
             self.rewards[agent] = reward
     
     def action_legal(self, agent:int, action:int) -> bool:
@@ -522,30 +518,24 @@ class CoupEnv(AECEnv):
         self.agent_selection = self._agent_selector.next()
 
 
-        
-        before_terminate = self.terminated()
+    
 
-        # stops the action if it is not counteract or challenged if the player is currently in a dead state
-        take_action = (
-                        (not self.terminated()
-                        or (self.terminated()
-                        and (self.get_action_string(action)
-                        in self.final_actions))))
-
-
-        if take_action:
-            self.process_action(agent, self.agent_selection, action)        
+        self.process_action(agent, self.agent_selection, action)        
 
 
      
         
-        if take_action and self.get_action_string(action) != "pass" and self.render_mode == "human":
+        if self.get_action_string(action) != "pass" and self.render_mode == "human":
             self.render(action)
 
 
-        # end the game if after taking your action, it is still terminated
+        # cannot end the game if the player has just been assissinated, as they have a chance to counteract or challenge            
         if self.terminated():
-            self.set_game_result()
+            if self.get_action_string(action) != "assassinate":
+                self.set_game_result()
+
+
+
 
         # Adds .rewards to ._cumulative_rewards
         self._accumulate_rewards()
