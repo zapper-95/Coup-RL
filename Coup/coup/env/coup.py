@@ -404,28 +404,23 @@ class CoupEnv(AECEnv):
             return False
         return True
 
-    def set_game_result(self, agent:int) -> None:
+    def set_game_result(self) -> None:
         """Sets termination to true, and calculates the rewards for a given player."""
-        self.terminations[agent] = True
-        other_indx = 1-self.agents.index(agent)
 
-        reward = ((
-                int(self.state_space[f"{agent}_card_1_alive"]) 
-                + int(self.state_space[f"{agent}_card_2_alive"])
-                )- 
-                (
-                int(self.state_space[f"{self.agents[other_indx]}_card_1_alive"]) 
-                + int(self.state_space[f"{self.agents[other_indx]}_card_2_alive"])
-                ))
-        self.rewards[agent] = reward
+        for agent in self.possible_agents:
+            self.terminations[agent] = True
+            other_indx = 1-self.agents.index(agent)
+
+            reward = ((
+                    int(self.state_space[f"{agent}_card_1_alive"]) 
+                    + int(self.state_space[f"{agent}_card_2_alive"])
+                    )- 
+                    (
+                    int(self.state_space[f"{self.agents[other_indx]}_card_1_alive"]) 
+                    + int(self.state_space[f"{self.agents[other_indx]}_card_2_alive"])
+                    ))
+            self.rewards[agent] = reward
     
-    def reset_game_result(self):
-        """If the other player moves out of a terminated state, reset the termination and rewards."""
-        for agent in self.agents:
-            self.terminations[agent] = False
-            self.rewards[agent] = 0
-
-
     def action_legal(self, agent:int, action:int) -> bool:
         """Check if an action of given player is legal for the cards they have."""
         action = self.get_action_string(action)
@@ -517,7 +512,7 @@ class CoupEnv(AECEnv):
 
 
         
-
+        before_terminate = self.terminated()
 
         # stops the action if it is not counteract or challenged if the player is currently in a dead state
         take_action = (
@@ -530,10 +525,10 @@ class CoupEnv(AECEnv):
         if take_action:
             self.process_action(agent, self.agent_selection, action)        
 
-        if self.terminated():
-            self.set_game_result(agent)
-        else:
-            self.reset_game_result()      
+        # end the game if after taking your action, it is still terminated
+        if before_terminate and self.terminated():
+            self.set_game_result()
+     
         
         if take_action and self.get_action_string(action) != "pass" and self.render_mode == "human":
             self.render(action)
