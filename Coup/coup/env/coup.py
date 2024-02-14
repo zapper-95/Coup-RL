@@ -48,7 +48,7 @@ def env(render_mode=None):
 
 class CoupEnv(AECEnv):
     metadata = {
-        "name": "coup_v0",
+        "name": "coup_v1",
     }
 
     def __init__(self, render_mode=None):
@@ -196,9 +196,16 @@ class CoupEnv(AECEnv):
             legal_moves = [8, 9]
         elif other_action_str == "challenge" and player_past_action_str != "counteract":
             # if the other player challenged a normal action, pass a turn
-            legal_moves = [9]   
+            legal_moves = [9]
+        
+        elif self.terminated():
+            if other_action_str == "assassinate":
+                legal_moves = [7, 8, 9]
+            else:
+                legal_moves = [9]
+            
         elif other_action_str in ["none", "pass"] or (other_action_str == "challenge" and player_past_action_str == "counteract"):
-            # can do anything except counteract, challenge, or pass
+            # if the other player passed, or did nothing or challenged a counteraction, all moves are legal
             legal_moves = [0, 1, 2, 3, 4, 5, 6]
         else:
             # all moves except pass
@@ -281,7 +288,7 @@ class CoupEnv(AECEnv):
 
         
         # custom instructions
-        self.deck = Deck(CARDS)
+        self.deck = Deck(CARDS, seed)
         self.state_space = {
             "player_1_card_1": self.deck.draw_card(),
             "player_1_card_2": self.deck.draw_card(),
@@ -419,6 +426,10 @@ class CoupEnv(AECEnv):
                     int(self.state_space[f"{self.agents[other_indx]}_card_1_alive"]) 
                     + int(self.state_space[f"{self.agents[other_indx]}_card_2_alive"])
                     ))
+            # if self.state_space[f"{agent}_card_2_alive"]:
+            #     self.rewards[agent] = 1
+            # else:
+            #     self.rewards[agent] = -1
             self.rewards[agent] = reward
     
     def action_legal(self, agent:int, action:int) -> bool:
@@ -525,19 +536,24 @@ class CoupEnv(AECEnv):
         if take_action:
             self.process_action(agent, self.agent_selection, action)        
 
-        # end the game if after taking your action, it is still terminated
-        if before_terminate and self.terminated():
-            self.set_game_result()
+
      
         
         if take_action and self.get_action_string(action) != "pass" and self.render_mode == "human":
             self.render(action)
 
+
+        # end the game if after taking your action, it is still terminated
+        if before_terminate and self.terminated():
+            self.set_game_result()
+
         # Adds .rewards to ._cumulative_rewards
         self._accumulate_rewards()
 
 class Deck():
-    def __init__(self, cards) -> None:
+    def __init__(self, cards, seed=None) -> None:
+        random.seed(seed)
+
         deck = [element for element in cards for _ in range(3)]
         self.deck  = deck
         self.shuffle()
