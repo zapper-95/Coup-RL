@@ -9,7 +9,6 @@ for agent in env.agent_iter():
 
     observation, reward, termination, truncation, info = env.last()
     action_mask = observation["action_mask"]
-    print(reward)
     if reward != 0:
         print(f"Player 1 reward: {env.rewards['player_1']}")
         print(f"Player 2 reward: {env.rewards['player_2']}")
