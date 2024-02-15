@@ -72,7 +72,7 @@ def train_action_mask(env_fn, steps=10_000, seed=0):
     # MaskablePPO behaves the same as SB3's PPO unless the env is wrapped
     # with ActionMasker. If the wrapper is detected, the masks are automatically
     # retrieved and used when learning.
-    model = MaskablePPO(MaskableActorCriticPolicy, env, ent_coef=0.001, verbose=1)
+    model = MaskablePPO(MaskableActorCriticPolicy, env, ent_coef=0, verbose=1)
     model.set_random_seed(seed)
     model.learn(total_timesteps=steps, progress_bar=True)
 
