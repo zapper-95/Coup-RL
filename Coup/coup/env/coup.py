@@ -26,7 +26,7 @@ ACTIONS = [
 NUM_ITERS = 100
 
 
-def env(render_mode=None):
+def env(render_mode="human"):
     """
     The env function often wraps the environment in wrappers by default.
     You can find full documentation for these methods
@@ -110,7 +110,10 @@ class CoupEnv(AECEnv):
             )
             for agent in self.agents
         }
-        self.terminate_turns = 0
+        self.terminate = False
+
+        self.rewards = {agent: 0 for agent in self.agents}
+        self._cumulative_rewards = {agent: 0 for agent in self.agents}
 
         
     def get_action_string(self, action_id:int) -> str:
@@ -283,7 +286,8 @@ class CoupEnv(AECEnv):
         # allows stepping through the agents
         self._agent_selector = agent_selector(self.agents)
         self.agent_selection = self._agent_selector.next()
-
+        self.prev_winner = None
+        self.prev_reward = 0
 
 
         
@@ -363,7 +367,10 @@ class CoupEnv(AECEnv):
                 if self.counteraction_legal(self.state_space[f"{agent}_action"], other_agent):
                     self.loose_card(agent)
                 else:
-                    # if it was not legal, let the player play their initial action again
+                    # if it was not legal, let the player play their initial action again (without having to pay again if it was assissinate)
+                    if self.get_action_string(self.state_space[f"{agent}_action"]) == "assassinate":
+                        self.state_space[f"{agent}_coins"] += 3
+
                     self.process_action(agent, other_agent, self.state_space[f"{agent}_action"])
                     self.loose_card(other_agent)
         elif action_str == "pass":
@@ -381,6 +388,9 @@ class CoupEnv(AECEnv):
     def reverse_action(self, other_agent:str, agent:str, action:int) -> None:
         """Reverse the action of the other player."""
         action = self.get_action_string(action)
+
+
+
 
         if action == "steal":
             self.state_space[f"{agent}_coins"] += min(2, self.state_space[f"{other_agent}_coins"])
@@ -405,6 +415,8 @@ class CoupEnv(AECEnv):
 
 
 
+
+
     def can_challenge(self, action:int) -> bool:
         """Check if an action can be challenged."""
         if self.get_action_string(action) in self.no_challenge_actions:
@@ -412,21 +424,37 @@ class CoupEnv(AECEnv):
         return True
 
     def set_game_result(self) -> None:
-        """Sets termination to true, and calculates the rewards for a given player."""
+        """Sets termination to true."""
 
-        for agent in self.possible_agents:
+        for agent in self.agents:
             self.terminations[agent] = True
-            other_indx = 1-self.agents.index(agent)
 
-            reward = ((
+    def get_reward(self, agent:str, other_agent:str):
+        return (
+                    int(self.state_space[f"{agent}_card_1_alive"]) 
+                    + int(self.state_space[f"{agent}_card_2_alive"])
+                    )- (
+                    int(self.state_space[f"{other_agent}_card_1_alive"]) 
+                    + int(self.state_space[f"{other_agent}_card_2_alive"])
+                    )
+    def set_rewards(self, agent:str, other_agent:str) -> None:
+        """Sets the rewards for the players."""
+        reward = ((
                     int(self.state_space[f"{agent}_card_1_alive"]) 
                     + int(self.state_space[f"{agent}_card_2_alive"])
                     )- 
                     (
-                    int(self.state_space[f"{self.agents[other_indx]}_card_1_alive"]) 
-                    + int(self.state_space[f"{self.agents[other_indx]}_card_2_alive"])
+                    int(self.state_space[f"{other_agent}_card_1_alive"]) 
+                    + int(self.state_space[f"{other_agent}_card_2_alive"])
                     ))
-            self.rewards[agent] = reward
+        self.rewards[agent] = reward
+        self.rewards[other_agent] = -reward
+
+    def get_current_winner(self) -> str:
+        if self.state_space["player_1_card_2_alive"]:
+            return "player_1"
+        else:
+            return "player_2"
     
     def action_legal(self, agent:int, action:int) -> bool:
         """Check if an action of given player is legal for the cards they have."""
@@ -492,6 +520,8 @@ class CoupEnv(AECEnv):
                 if card in self.action_counter_card[stop_action]:
                     return True
         return False
+    
+
 
     def step(self, action):
         if (
@@ -503,10 +533,13 @@ class CoupEnv(AECEnv):
         agent = self.agent_selection
 
         self.player_turn = self.agent_name_mapping[agent]
-        
-        # reset the cumulative rewards for both agents, as we recalculate them at the end
+
         for a in self.agents:
-            self._cumulative_rewards[a] = 0
+            self.rewards[a] = 0
+        #self._clear_rewards()
+        # reset the cumulative rewards for both agents, as we recalculate them at the end
+        # for a in self.agents:
+        #     self._cumulative_rewards[a] = 0
 
         self.num_moves += 1
 
@@ -515,30 +548,72 @@ class CoupEnv(AECEnv):
         }
 
         # get the next agent
+
         self.agent_selection = self._agent_selector.next()
+        other_agent = self.agent_selection
 
 
-    
 
-        self.process_action(agent, self.agent_selection, action)        
+        self.process_action(agent, other_agent, action)        
 
 
      
-        
-        if self.get_action_string(action) != "pass" and self.render_mode == "human":
+        if self.render_mode == "human":
             self.render(action)
 
 
-        # cannot end the game if the player has just been assissinated, as they have a chance to counteract or challenge            
+
+
+        # cannot end the game if the player has just been assissinated, as they have a chance to counteract or challenge
+        reward = self.get_reward(agent, other_agent)
         if self.terminated():
-            if self.get_action_string(action) != "assassinate":
+
+            if self.get_action_string(action) == "assassinate":
+                self.prev_winner = self.get_current_winner()
+                self.rewards[agent], self.rewards[other_agent] = reward, -reward
+                self.prev_reward = reward
+            
+            elif self.prev_winner != None:
+                if self.prev_winner == self.get_current_winner():
+                    # s0
+                    self.set_game_result()
+                else:
+                    # s2
+                    self.rewards[agent], self.rewards[other_agent] = 2 * self.prev_reward, -2 * self.prev_reward
+                    self.set_game_result()
+            else:
+                # either a coup or challenge, that has ended the game
+                self.rewards[agent], self.rewards[other_agent] = reward, -reward
                 self.set_game_result()
+        
+        elif self.prev_winner != None:
+            # s1, s3
+            self.rewards[agent], self.rewards[other_agent] = self.prev_reward, -self.prev_reward
+            self.prev_winner = None
+            self.prev_reward = 0
 
 
 
+            # self.terminate = True
+            # reward = self.get_reward(agent, self.agent_selection)
 
-        # Adds .rewards to ._cumulative_rewards
+            # self.rewards[agent], self.rewards[self.agent_selection] = reward, -reward
+            
+
+            # if self.get_action_string(action) != "assassinate":
+            #     self.set_rewards(agent, self.agent_selection)
+            #     self.set_game_result()
+
+        
+        #Adds .rewards to ._cumulative_rewards
+        #print(self._cumulative_rewards)
         self._accumulate_rewards()
+
+        if self.rewards["player_1"] > 2:
+            print("should not have more than 2 cumulative reward")
+            exit(0)
+
+
 
 class Deck():
     def __init__(self, cards, seed=None) -> None:
