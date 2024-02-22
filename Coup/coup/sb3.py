@@ -171,13 +171,7 @@ def eval_random_vs_trained(env_fn, num_games=100, model_name=None, render_mode=N
             observation, action_mask = obs.values()
 
             for a in env.agents:
-                rewards[a] += env.rewards[a]
-
-            # print(rewards)
-            # if termination:
-            #     print("end game")
-            # input()
-                
+                rewards[a] += env.rewards[a]             
             if termination or truncation:
                 winner = max(env.rewards, key=env.rewards.get)
                 scores[winner] += 1 # only tracks the largest reward (winner of game)
@@ -271,11 +265,6 @@ def test_human(env_fn, num_games=1, model_name=None, render_mode=None):
             for a in env.agents:
                 rewards[a] += env.rewards[a]
 
-            # print(rewards)
-            # if termination:
-            #     print("end game")
-            # input()
-                
             if termination or truncation:
                 winner = max(env.rewards, key=env.rewards.get)
                 scores[winner] += 1 # only tracks the largest reward (winner of game)
