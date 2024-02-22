@@ -26,7 +26,7 @@ ACTIONS = [
 NUM_ITERS = 100
 
 
-def env(render_mode="human"):
+def env(render_mode=None):
     """
     The env function often wraps the environment in wrappers by default.
     You can find full documentation for these methods
@@ -110,7 +110,6 @@ class CoupEnv(AECEnv):
             )
             for agent in self.agents
         }
-        self.terminate = False
 
         self.rewards = {agent: 0 for agent in self.agents}
         self._cumulative_rewards = {agent: 0 for agent in self.agents}
@@ -536,10 +535,6 @@ class CoupEnv(AECEnv):
 
         for a in self.agents:
             self.rewards[a] = 0
-        #self._clear_rewards()
-        # reset the cumulative rewards for both agents, as we recalculate them at the end
-        # for a in self.agents:
-        #     self._cumulative_rewards[a] = 0
 
         self.num_moves += 1
 
@@ -548,10 +543,8 @@ class CoupEnv(AECEnv):
         }
 
         # get the next agent
-
         self.agent_selection = self._agent_selector.next()
         other_agent = self.agent_selection
-
 
 
         self.process_action(agent, other_agent, action)        
@@ -591,29 +584,7 @@ class CoupEnv(AECEnv):
             self.rewards[agent], self.rewards[other_agent] = self.prev_reward, -self.prev_reward
             self.prev_winner = None
             self.prev_reward = 0
-
-
-
-            # self.terminate = True
-            # reward = self.get_reward(agent, self.agent_selection)
-
-            # self.rewards[agent], self.rewards[self.agent_selection] = reward, -reward
-            
-
-            # if self.get_action_string(action) != "assassinate":
-            #     self.set_rewards(agent, self.agent_selection)
-            #     self.set_game_result()
-
-        
-        #Adds .rewards to ._cumulative_rewards
-        #print(self._cumulative_rewards)
         self._accumulate_rewards()
-
-        if self.rewards["player_1"] > 2:
-            print("should not have more than 2 cumulative reward")
-            exit(0)
-
-
 
 class Deck():
     def __init__(self, cards, seed=None) -> None:
