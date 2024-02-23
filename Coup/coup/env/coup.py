@@ -505,9 +505,10 @@ class CoupEnv(AECEnv):
         
         # cards of the counteracting player
         cards = [self.state_space[f"{agent}_card_1"], self.state_space[f"{agent}_card_2"]]
-        # only keep the second card if it is alive
-        if not self.state_space[f"{agent}_card_2_alive"]:
-            cards.pop()
+
+        # only keep the first card if it is alive
+        if not self.state_space[f"{agent}_card_1_alive"]:
+            cards.pop(0)
         # check that the action they are stopping can be counteracted
         if self.can_counteract(stop_action):
             # action which is being stopped
