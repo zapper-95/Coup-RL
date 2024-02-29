@@ -13,7 +13,7 @@ import time
 import argparse
 import random
 
-from sb3_contrib import MaskablePPO
+from ppo_mask import MaskablePPO
 from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
 from sb3_contrib.common.wrappers import ActionMasker
 
@@ -72,7 +72,7 @@ def train_action_mask(env_fn, steps=10_000, seed=0):
     # MaskablePPO behaves the same as SB3's PPO unless the env is wrapped
     # with ActionMasker. If the wrapper is detected, the masks are automatically
     # retrieved and used when learning.
-    model = MaskablePPO(MaskableActorCriticPolicy, env, ent_coef=0, verbose=1, tensorboard_log="logs/")
+    model = MaskablePPO(MaskableActorCriticPolicy, env, ent_coef=0, verbose=1)
     model.set_random_seed(seed)
 
     model_name = f"models/{env.unwrapped.metadata.get('name')}_{time.strftime('%d-%m-%Y_%H-%M-%S')}"
