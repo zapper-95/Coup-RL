@@ -52,6 +52,7 @@ class SB3ActionMaskWrapper(pettingzoo.utils.BaseWrapper):
     def action_mask(self):
         """Separate function used in order to access the action mask."""
         return super().observe(self.agent_selection)["action_mask"]
+        
 
 
 def mask_fn(env):
@@ -60,7 +61,8 @@ def mask_fn(env):
 
 def train_action_mask(env_fn, steps=10_000, seed=0):
     """Train a single model to play as each agent in a zero-sum game environment using invalid action masking."""
-    env = env_fn.env()
+    env = env_fn.env(render_mode="human")
+    #env = env_fn.env(render_mode=None)
     print(f"Starting training on {str(env.metadata['name'])}.")
 
     # Custom wrapper to convert PettingZoo envs to work with SB3 action masking
@@ -79,7 +81,7 @@ def train_action_mask(env_fn, steps=10_000, seed=0):
     model.learn(total_timesteps=steps, progress_bar=True, tb_log_name=model_name)
 
 
-    model.save(f"models/{model_name}")
+    model.save(model_name)
 
     print("Model has been saved.")
     print(f"Finished training on {str(env.unwrapped.metadata['name'])}.\n")
@@ -375,7 +377,7 @@ if __name__ == "__main__":
     if args.command == 'train':
         model_name = train_action_mask(env_fn, steps=args.steps, seed=0)
         # evaluate 1,000 games against a random agent
-        _, _, winrate, _ = eval_random_vs_trained(env_fn, num_games=1_000, render_mode=None, model_name=model_name)
+        _, _, winrate, _ = eval_random_vs_trained(env_fn, num_games=1_000, render_mode="None", model_name=model_name)
         # rename model to include the winrate
         rename_model(env_fn, winrate=winrate)
     elif args.command == 'test':
