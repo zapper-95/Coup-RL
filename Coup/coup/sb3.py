@@ -18,7 +18,7 @@ from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
 from sb3_contrib.common.wrappers import ActionMasker
 
 import pettingzoo.utils
-import coup_v0
+import coup_v1
 
 
 class SB3ActionMaskWrapper(pettingzoo.utils.BaseWrapper):
@@ -72,12 +72,14 @@ def train_action_mask(env_fn, steps=10_000, seed=0):
     # MaskablePPO behaves the same as SB3's PPO unless the env is wrapped
     # with ActionMasker. If the wrapper is detected, the masks are automatically
     # retrieved and used when learning.
-    model = MaskablePPO(MaskableActorCriticPolicy, env, ent_coef=0.01, verbose=1)
+    model = MaskablePPO(MaskableActorCriticPolicy, env, ent_coef=0, verbose=1, tensorboard_log="logs/")
     model.set_random_seed(seed)
-    model.learn(total_timesteps=steps)
 
     model_name = f"models/{env.unwrapped.metadata.get('name')}_{time.strftime('%d-%m-%Y_%H-%M-%S')}"
-    model.save(f"models/{env.unwrapped.metadata.get('name')}_{time.strftime('%d-%m-%Y_%H-%M-%S')}")
+    model.learn(total_timesteps=steps, progress_bar=True, tb_log_name=model_name)
+
+
+    model.save(f"models/{model_name}")
 
     print("Model has been saved.")
     print(f"Finished training on {str(env.unwrapped.metadata['name'])}.\n")
@@ -135,7 +137,7 @@ def eval_random_vs_trained(env_fn, num_games=100, model_name=None, render_mode=N
 
     if model_name == "latest":
         model_name = get_latest_model(env)
-    elif model_name == "max" or model_name == None:
+    elif model_name == "best" or model_name == None:
         model_name = get_best_model(env)
     else:
         
@@ -157,8 +159,10 @@ def eval_random_vs_trained(env_fn, num_games=100, model_name=None, render_mode=N
     round_rewards = []
 
     for i in range(num_games):
-        env.reset(seed=i)
+        env.reset()
         env.action_space(env.possible_agents[0]).seed(i)
+        
+        rewards = {agent: 0 for agent in env.possible_agents}
 
         for agent in env.agent_iter():
             obs, reward, termination, truncation, info = env.last()
@@ -166,23 +170,16 @@ def eval_random_vs_trained(env_fn, num_games=100, model_name=None, render_mode=N
             # Separate observation and action mask
             observation, action_mask = obs.values()
 
+            for a in env.agents:
+                rewards[a] += env.rewards[a]             
             if termination or truncation:
-                
-                # If there is a winner, keep track, otherwise don't change the scores (tie)
-                if (
-                    env.rewards[env.possible_agents[0]]
-                    != env.rewards[env.possible_agents[1]]
-                ):
-                    winner = max(env.rewards, key=env.rewards.get)
-                    scores[winner] += 1 # only tracks the largest reward (winner of game)
+                winner = max(env.rewards, key=env.rewards.get)
+                scores[winner] += 1 # only tracks the largest reward (winner of game)
                 # Also track negative and positive rewards (penalizes illegal moves)
                 for a in env.possible_agents:
-                    total_rewards[a] += env.rewards[a]
+                    total_rewards[a] += rewards[a]
                 # List of rewards by round, for reference
-                round_rewards.append(env.rewards)
-
-                print(total_rewards)
-                input()
+                round_rewards.append(rewards)
                 break
             else:
                 if agent == env.possible_agents[0]:
@@ -201,7 +198,7 @@ def eval_random_vs_trained(env_fn, num_games=100, model_name=None, render_mode=N
         winrate = 0
     else:
         winrate = scores[env.possible_agents[1]] / num_games
-    print("Rewards by round: ", round_rewards)
+    #print("Rewards by round: ", round_rewards)
     print("Total rewards (incl. negative rewards): ", total_rewards)
     print("Winrate: ", winrate)
     print("Final scores: ", scores)
@@ -238,7 +235,7 @@ def test_human(env_fn, num_games=1, model_name=None, render_mode=None):
 
     if model_name == "latest":
         model_name = get_latest_model(env)
-    elif model_name == "max" or model_name == None:
+    elif model_name == "best" or model_name == None:
         model_name = get_best_model(env)
     else:
         model_name = f"models/{model_name}.zip"
@@ -254,69 +251,60 @@ def test_human(env_fn, num_games=1, model_name=None, render_mode=None):
     round_rewards = []
 
     for i in range(num_games):
-        # call a render function to initially display the state
         env.reset()
-
-        env.action_space(env.possible_agents[0])
-
-        # if the human is the first agent, render the environment
-        if 1-agent_index == 0:
-            env.render(display_action=False)
+        env.action_space(env.possible_agents[0]).seed(i)
+        
+        rewards = {agent: 0 for agent in env.possible_agents}
 
         for agent in env.agent_iter():
             obs, reward, termination, truncation, info = env.last()
-            
+
             # Separate observation and action mask
             observation, action_mask = obs.values()
 
+            for a in env.agents:
+                rewards[a] += env.rewards[a]
+
             if termination or truncation:
-                # If there is a winner, keep track, otherwise don't change the scores (tie)
-                if (
-                    env.rewards[env.possible_agents[0]]
-                    != env.rewards[env.possible_agents[1]]
-                ):
-                    winner = max(env.rewards, key=env.rewards.get)
-                    scores[winner] += 1 # only tracks the largest reward (winner of game)
+                winner = max(env.rewards, key=env.rewards.get)
+                scores[winner] += 1 # only tracks the largest reward (winner of game)
                 # Also track negative and positive rewards (penalizes illegal moves)
                 for a in env.possible_agents:
-                    total_rewards[a] += env.rewards[a]
+                    total_rewards[a] += rewards[a]
                 # List of rewards by round, for reference
-                round_rewards.append(env.rewards)
+                round_rewards.append(rewards)
                 break
             else:
-
-                if not render_mode:
-                    print("-------------------")
-                    print("OBSERVATIONS")
-                    # shallow copy
-                    raw_obs = obs["observation"][:]
-
-                    print(f"Card 1: {env.get_card(raw_obs[0])}")
-                    print(f"Card 2: {env.get_card(raw_obs[1])}")
-                    print(f"Card 1 Alive: {bool(raw_obs[2])}")
-                    print(f"Card 2 Alive: {bool(raw_obs[3])}")
-                    print(f"Coins: {raw_obs[4]}")
-                    print(f"Previous action: {env.get_action_string(raw_obs[5])}")
-
-                    print()
-                    if raw_obs[6] == 5:
-                        print(f"Agents Card 1: (Hidden)")
-                    else:
-                        print(f"Agents Card 1: {env.get_card(raw_obs[6])}")
-
-                    if raw_obs[7] == 5:
-                        print(f"Agents Card 2: (Hidden)")
-                    else:
-                        print(f"Agents Card 2: {env.get_card(raw_obs[7])}")
-
-                    print(f"Agents Coins: {raw_obs[8]}")
-                    print(f"Agents Previous action: {env.get_action_string(raw_obs[9])}")
-                    print("-------------------")
-                    print()
-
-
-
                 if agent == env.possible_agents[1-agent_index]:
+
+                    if not render_mode:
+                        print("-------------------")
+                        print("OBSERVATIONS")
+                        # shallow copy
+                        raw_obs = obs["observation"][:]
+
+                        print(f"Card 1: {env.get_card(raw_obs[0])}")
+                        print(f"Card 2: {env.get_card(raw_obs[1])}")
+                        print(f"Card 1 Alive: {bool(raw_obs[2])}")
+                        print(f"Card 2 Alive: {bool(raw_obs[3])}")
+                        print(f"Coins: {raw_obs[4]}")
+                        print(f"Previous action: {env.get_action_string(raw_obs[5])}")
+
+                        print()
+                        if raw_obs[6] == 5:
+                            print(f"Agents Card 1: (Hidden)")
+                        else:
+                            print(f"Agents Card 1: {env.get_card(raw_obs[6])}")
+
+                        if raw_obs[7] == 5:
+                            print(f"Agents Card 2: (Hidden)")
+                        else:
+                            print(f"Agents Card 2: {env.get_card(raw_obs[7])}")
+
+                        print(f"Agents Coins: {raw_obs[8]}")
+                        print(f"Agents Previous action: {env.get_action_string(raw_obs[9])}")
+                        print("-------------------")
+                        print()
                     print("Human's turn")
 
                     for i in range(len(action_mask)):
@@ -331,8 +319,9 @@ def test_human(env_fn, num_games=1, model_name=None, render_mode=None):
                     print()
                 else:
                     act = int(
+                        # don't want determinism here
                         model.predict(
-                            observation, action_masks=action_mask, deterministic=True
+                            observation, action_masks=action_mask, deterministic=False
                         )[0]
                     )
             env.step(act)
@@ -355,7 +344,7 @@ if __name__ == "__main__":
 
     
     
-    env_fn = coup_v0
+    env_fn = coup_v1
 
     
     # create the parser
@@ -365,7 +354,7 @@ if __name__ == "__main__":
     subparsers = parser.add_subparsers(dest='command', help='Sub-command help')
 
     parser_train = subparsers.add_parser('train', help='Train the model')
-    parser_train.add_argument('-s', '--steps', type=int, default=20000, help='Number of training steps')
+    parser_train.add_argument('-s', '--steps', type=int, default=20480, help='Number of training steps')
 
     parser_test = subparsers.add_parser('test', help='Test the model')
     parser_test.add_argument('-m', '--model_name', type=str, help='Name of the model to test')
@@ -384,9 +373,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.command == 'train':
-        model_name = train_action_mask(env_fn, steps=args.steps, seed=42)
+        model_name = train_action_mask(env_fn, steps=args.steps, seed=0)
         # evaluate 1,000 games against a random agent
-        _, _, winrate, _ = eval_random_vs_trained(env_fn, num_games=1000, render_mode=None, model_name=model_name)
+        _, _, winrate, _ = eval_random_vs_trained(env_fn, num_games=1_000, render_mode=None, model_name=model_name)
         # rename model to include the winrate
         rename_model(env_fn, winrate=winrate)
     elif args.command == 'test':
@@ -395,7 +384,7 @@ if __name__ == "__main__":
         else:
             eval_random_vs_trained(env_fn, num_games=1, render_mode="human")
     elif args.command == 'evaluate':
-            eval_random_vs_trained(env_fn, num_games=1000, render_mode=None, model_name=args.model_name)
+            eval_random_vs_trained(env_fn, num_games=1_000, render_mode=None, model_name=args.model_name)
     elif args.command == 'test_human':   
         if args.real:
             render_mode = None
