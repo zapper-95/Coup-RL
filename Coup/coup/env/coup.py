@@ -564,16 +564,17 @@ class CoupEnv(AECEnv):
 
             if self.get_action_string(action) == "assassinate":
                 self.prev_winner = self.get_current_winner()
-                self.rewards[agent], self.rewards[other_agent] = reward, -reward
                 self.prev_reward = reward
             
             elif self.prev_winner != None:
                 if self.prev_winner == self.get_current_winner():
-                    # s0
+                    # s1
+                    # current agent gets the negative of the previous reward
+                    self.rewards[agent], self.rewards[other_agent] = -self.prev_reward, self.prev_reward
                     self.set_game_result()
                 else:
                     # s2
-                    self.rewards[agent], self.rewards[other_agent] = 2 * self.prev_reward, -2 * self.prev_reward
+                    self.rewards[agent], self.rewards[other_agent] = self.prev_reward, -self.prev_reward
                     self.set_game_result()
             else:
                 # either a coup or challenge, that has ended the game
@@ -581,8 +582,7 @@ class CoupEnv(AECEnv):
                 self.set_game_result()
         
         elif self.prev_winner != None:
-            # s1, s3
-            self.rewards[agent], self.rewards[other_agent] = self.prev_reward, -self.prev_reward
+            # reset previous winner and previous reward
             self.prev_winner = None
             self.prev_reward = 0
         self._accumulate_rewards()
