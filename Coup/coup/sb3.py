@@ -130,11 +130,10 @@ def get_best_model(env):
 
 def eval_random_vs_trained(env_fn, num_games=100, model_name=None, render_mode=None):
     # Evaluate a trained agent vs a random agent
-    render_mode = "human"
     env = env_fn.env(render_mode=render_mode)
 
     print(
-        f"Starting evaluation vs a random agent. Trained agent will play as {env.possible_agents[1]}."
+        f"Starting evaluation vs a random agent."
     )
 
 
@@ -157,56 +156,95 @@ def eval_random_vs_trained(env_fn, num_games=100, model_name=None, render_mode=N
         print("Model not found.")
         exit(0)    
 
-    scores = {agent: 0 for agent in env.possible_agents}
-    total_rewards = {agent: 0 for agent in env.possible_agents}
-    round_rewards = []
+    scores = [{agent: 0 for agent in env.possible_agents},
+              {agent: 0 for agent in env.possible_agents}]
+    
+    total_rewards = [{agent: 0 for agent in env.possible_agents},
+                     {agent: 0 for agent in env.possible_agents}]
+    
+    round_rewards = [[],[]]
 
-    for i in range(num_games):
-        env.reset()
-        env.action_space(env.possible_agents[0]).seed(i)
-        
-        rewards = {agent: 0 for agent in env.possible_agents}
+    for model_id in range(2):
+        print(f"Model will play as {env.possible_agents[model_id]} for {num_games//2} games.")
+    
+        for _ in range(num_games//2):
+            env.reset()
+            #env.action_space(env.possible_agents[0])
+            
+            rewards = {agent: 0 for agent in env.possible_agents}
 
-        for agent in env.agent_iter():
-            obs, reward, termination, truncation, info = env.last()
+            for agent in env.agent_iter():
+                obs, reward, termination, truncation, info = env.last()
 
-            # Separate observation and action mask
-            observation, action_mask = obs.values()
+                # Separate observation and action mask
+                observation, action_mask = obs.values()
 
-            for a in env.agents:
-                rewards[a] += env.rewards[a]             
-            if termination or truncation:
-                winner = max(env.rewards, key=env.rewards.get)
-                scores[winner] += 1 # only tracks the largest reward (winner of game)
-                # Also track negative and positive rewards (penalizes illegal moves)
-                for a in env.possible_agents:
-                    total_rewards[a] += rewards[a]
-                # List of rewards by round, for reference
-                round_rewards.append(rewards)
-                print(winner)
-                break
-            else:
-                if agent == env.possible_agents[0]:
-                    act = env.action_space(agent).sample(action_mask)
+                for a in env.agents:
+                    rewards[a] += env.rewards[a]             
+                if termination or truncation:
+                    winner = max(env.rewards, key=env.rewards.get)
+                    scores[model_id][winner] += 1 # only tracks the largest reward (winner of game)
+                    # Also track negative and positive rewards (penalizes illegal moves)
+                    for a in env.possible_agents:
+                        total_rewards[model_id][a] += rewards[a]
+                    # List of rewards by round, for reference
+                    round_rewards[model_id].append(rewards)
+                    break
                 else:
-                    act = int(
-                        model.predict(
-                            observation, action_masks=action_mask, deterministic=True
-                        )[0]
-                    )
-            env.step(act)
+
+                    if agent == env.possible_agents[model_id]:
+                        act = int(
+                            model.predict(
+                                observation, action_masks=action_mask, deterministic=True
+                            )[0]
+                        )
+                    else:
+                        act = env.action_space(agent).sample(action_mask)
+
+                env.step(act)
     env.close()
 
     # Avoid dividing by zero
-    if sum(scores.values()) == 0:
+    if sum(scores[0].values()) == 0 or sum(scores[1].values()) == 0:
         winrate = 0
     else:
-        winrate = scores[env.possible_agents[1]] / num_games
-    #print("Rewards by round: ", round_rewards)
-    print("Total rewards (incl. negative rewards): ", total_rewards)
+        fp_winrate = scores[0][env.possible_agents[0]] / (num_games//2)
+        sp_winrate = scores[1][env.possible_agents[1]] / (num_games//2)
+        winrate = (fp_winrate + sp_winrate) / 2
+
+    full_scores = {"model": 0, "random":0}
+    full_scores["model"] += scores[0][env.possible_agents[0]] + scores[1][env.possible_agents[1]]
+    full_scores["random"] += scores[0][env.possible_agents[1]] + scores[1][env.possible_agents[0]]
+
+
+    full_total_rewards = {"model": 0, "random":0}
+    full_total_rewards["model"] += total_rewards[0][env.possible_agents[0]] + total_rewards[1][env.possible_agents[1]]
+    full_total_rewards["random"] += total_rewards[0][env.possible_agents[1]] + total_rewards[1][env.possible_agents[0]]
+
+    print("Games as first player")
+    print("Total rewards (incl. negative rewards): ", total_rewards[0])
+    print("Winrate: ", fp_winrate)
+    print("Final scores: ", scores[0])
+
+    print("---------------")
+
+    print("Games as second player")
+    print("Total rewards (incl. negative rewards): ", total_rewards[1])
+    print("Winrate: ", sp_winrate)
+    print("Final scores: ", scores[1])
+
+    print("---------------")
+    print("All games")
+    print("Total rewards (incl. negative rewards): ", full_total_rewards)
     print("Winrate: ", winrate)
-    print("Final scores: ", scores)
-    return round_rewards, total_rewards, winrate, scores
+    print("Final scores: ", full_scores)
+
+
+    #print("Rewards by round: ", round_rewards)
+    # print("Total rewards (incl. negative rewards): ", total_rewards)
+    # print("Winrate: ", winrate)
+    # print("Final scores: ", scores)
+    return round_rewards, full_total_rewards, winrate, full_scores
 
 def rename_model(env_fn, winrate):
     env = env_fn.env(render_mode=None)
