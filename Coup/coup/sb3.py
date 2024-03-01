@@ -169,7 +169,6 @@ def eval_random_vs_trained(env_fn, num_games=100, model_name=None, render_mode=N
     
         for _ in range(num_games//2):
             env.reset()
-            #env.action_space(env.possible_agents[0])
             
             rewards = {agent: 0 for agent in env.possible_agents}
 
@@ -191,7 +190,6 @@ def eval_random_vs_trained(env_fn, num_games=100, model_name=None, render_mode=N
                     round_rewards[model_id].append(rewards)
                     break
                 else:
-
                     if agent == env.possible_agents[model_id]:
                         act = int(
                             model.predict(
@@ -238,12 +236,6 @@ def eval_random_vs_trained(env_fn, num_games=100, model_name=None, render_mode=N
     print("Total rewards (incl. negative rewards): ", full_total_rewards)
     print("Winrate: ", winrate)
     print("Final scores: ", full_scores)
-
-
-    #print("Rewards by round: ", round_rewards)
-    # print("Total rewards (incl. negative rewards): ", total_rewards)
-    # print("Winrate: ", winrate)
-    # print("Final scores: ", scores)
     return round_rewards, full_total_rewards, winrate, full_scores
 
 def rename_model(env_fn, winrate):
