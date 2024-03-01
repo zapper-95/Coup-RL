@@ -1,5 +1,6 @@
 import sys
 import time
+import copy
 from collections import deque
 from typing import Any, ClassVar, Dict, Optional, Tuple, Type, TypeVar, Union
 
@@ -153,6 +154,17 @@ class MaskablePPO(OnPolicyAlgorithm):
         if not isinstance(self.policy, MaskableActorCriticPolicy):
             raise ValueError("Policy must subclass MaskableActorCriticPolicy")
 
+        self.prev_policy = self.policy_class(
+            self.observation_space,
+            self.action_space,
+            self.lr_schedule,
+            **self.policy_kwargs,  # pytype:disable=not-instantiable
+        )
+        self.prev_policy = self.prev_policy.to(self.device)
+
+        if not isinstance(self.prev_policy, MaskableActorCriticPolicy):
+            raise ValueError("Previous policy must subclass MaskableActorCriticPolicy")
+        
         self.rollout_buffer = buffer_cls(
             self.n_steps,
             self.observation_space,
@@ -250,6 +262,10 @@ class MaskablePPO(OnPolicyAlgorithm):
         callback = self._init_callback(callback, use_masking, progress_bar)
 
         return total_timesteps, callback
+    
+
+    def models_turn(self, steps, model_turn=0):
+        return steps % 2 == model_turn
 
     def collect_rollouts(
         self,
@@ -282,6 +298,7 @@ class MaskablePPO(OnPolicyAlgorithm):
         assert self._last_obs is not None, "No previous observation was provided"
         # Switch to eval mode (this affects batch norm / dropout)
         self.policy.set_training_mode(False)
+        self.prev_policy.set_training_mode(False)
         n_steps = 0
         n_buffer_steps = 0
         action_masks = None
@@ -293,7 +310,6 @@ class MaskablePPO(OnPolicyAlgorithm):
         callback.on_rollout_start()
 
         while n_buffer_steps < n_rollout_steps:
-            #print(n_steps)
             with th.no_grad():
                 # Convert to pytorch tensor or to TensorDict
                 obs_tensor = obs_as_tensor(self._last_obs, self.device)
@@ -301,14 +317,13 @@ class MaskablePPO(OnPolicyAlgorithm):
                 # This is the only change related to invalid action masking
                 if use_masking:
                     action_masks = get_action_masks(env)
-
-                actions, values, log_probs = self.policy(obs_tensor, action_masks=action_masks)
-
+                
+                if self.models_turn(n_steps):
+                    actions, values, log_probs = self.policy(obs_tensor, action_masks=action_masks)
+                else:
+                    actions, values, log_probs = self.prev_policy(obs_tensor, action_masks=action_masks)
             actions = actions.cpu().numpy()
             
-            if n_steps % 2 == 1:
-                random_action = env.action_space.sample(action_masks.reshape(11,))
-                actions[0] = random_action
 
             new_obs, rewards, dones, infos = env.step(actions)
 
@@ -337,7 +352,7 @@ class MaskablePPO(OnPolicyAlgorithm):
                     )
                 ):
                     
-                    if n_steps % 2 == 0:
+                    if self.models_turn(n_steps):
                         # gets the reward of the next agent, so we need to change the sign
                         rewards[0] = -rewards[0]
                         infos[0]["episode"]["r"] = -infos[0]["episode"]["r"]
@@ -351,7 +366,7 @@ class MaskablePPO(OnPolicyAlgorithm):
                         terminal_value = self.policy.predict_values(terminal_obs)[0]
                     rewards[idx] += self.gamma * terminal_value
 
-            if n_steps % 2 == 0:
+            if self.models_turn(n_steps):
                 n_buffer_steps += 1
                 rollout_buffer.add(
                     self._last_obs,
@@ -376,7 +391,8 @@ class MaskablePPO(OnPolicyAlgorithm):
         rollout_buffer.compute_returns_and_advantage(last_values=values, dones=dones)
 
         callback.on_rollout_end()
-
+        
+        self.prev_policy = copy.deepcopy(self.policy)
         return True
 
     def predict(
@@ -522,6 +538,56 @@ class MaskablePPO(OnPolicyAlgorithm):
         if self.clip_range_vf is not None:
             self.logger.record("train/clip_range_vf", clip_range_vf)
 
+
+    def _eval_vs_random(
+        self: SelfMaskablePPO,
+        env: VecEnv,
+        n_eval_episodes: int = 100,
+    )-> float:
+        """
+        Evaluate the policy against a random agent.
+        """ 
+     
+        wins = 0
+        self.policy.set_training_mode(False)
+
+        for _ in range(n_eval_episodes):
+
+            model_turn = np.random.randint(0, 1+1)
+
+            env = self.env
+            done = False
+            turn = 0
+
+            while not done:
+                with th.no_grad():
+                # Convert to pytorch tensor or to TensorDict
+                    obs_tensor = obs_as_tensor(self._last_obs, self.device)
+                
+                action_masks = get_action_masks(env)
+
+                if self.models_turn(turn, model_turn):
+                    action, _, _ = self.policy(obs_tensor, action_masks=action_masks)
+                    action = action.cpu().numpy()
+                else:
+                    random_action = env.action_space.sample(action_masks.reshape(11,))
+                    action = np.array([random_action])
+                
+                new_obs, rewards, done, infos = env.step(action)
+                
+                if self.models_turn(turn, model_turn):
+                    # gets the reward of the next agent, so we need to change the sign
+                    rewards[0] = -rewards[0]
+
+                done = done[0]
+                self._last_obs = new_obs
+                turn += 1
+
+            if rewards[0] > 0:
+                wins += 1
+        return wins / n_eval_episodes
+
+
     def learn(
         self: SelfMaskablePPO,
         total_timesteps: int,
@@ -548,16 +614,19 @@ class MaskablePPO(OnPolicyAlgorithm):
         while self.num_timesteps < total_timesteps:
             continue_training = self.collect_rollouts(self.env, callback, self.rollout_buffer, self.n_steps, use_masking)
 
+            winrate  = self._eval_vs_random(self.env)
+
             if not continue_training:
                 break
 
             iteration += 1
             self._update_current_progress_remaining(self.num_timesteps, total_timesteps)
-
+            
             # Display training infos
             if log_interval is not None and iteration % log_interval == 0:
                 time_elapsed = max((time.time_ns() - self.start_time) / 1e9, sys.float_info.epsilon)
                 fps = int((self.num_timesteps - self._num_timesteps_at_start) / time_elapsed)
+                self.logger.record("eval/winrate_vs_random", winrate)
                 self.logger.record("time/iterations", iteration, exclude="tensorboard")
                 if len(self.ep_info_buffer) > 0 and len(self.ep_info_buffer[0]) > 0:
                     self.logger.record("rollout/ep_rew_mean", safe_mean([ep_info["r"] for ep_info in self.ep_info_buffer]))
