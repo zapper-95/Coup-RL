@@ -283,6 +283,7 @@ class MaskablePPO(OnPolicyAlgorithm):
         # Switch to eval mode (this affects batch norm / dropout)
         self.policy.set_training_mode(False)
         n_steps = 0
+        n_buffer_steps = 0
         action_masks = None
         rollout_buffer.reset()
 
@@ -291,7 +292,8 @@ class MaskablePPO(OnPolicyAlgorithm):
 
         callback.on_rollout_start()
 
-        while n_steps < n_rollout_steps:
+        while n_buffer_steps < n_rollout_steps:
+            #print(n_steps)
             with th.no_grad():
                 # Convert to pytorch tensor or to TensorDict
                 obs_tensor = obs_as_tensor(self._last_obs, self.device)
@@ -303,17 +305,22 @@ class MaskablePPO(OnPolicyAlgorithm):
                 actions, values, log_probs = self.policy(obs_tensor, action_masks=action_masks)
 
             actions = actions.cpu().numpy()
+            
+            if n_steps % 2 == 1:
+                random_action = env.action_space.sample(action_masks.reshape(11,))
+                actions[0] = random_action
+
             new_obs, rewards, dones, infos = env.step(actions)
 
             self.num_timesteps += env.num_envs
+
 
             # Give access to local variables
             callback.update_locals(locals())
             if not callback.on_step():
                 return False
 
-            self._update_info_buffer(infos)
-            n_steps += 1
+
 
             if isinstance(self.action_space, spaces.Discrete):
                 # Reshape in case of discrete action
@@ -324,26 +331,42 @@ class MaskablePPO(OnPolicyAlgorithm):
             for idx, done in enumerate(dones):
                 if (
                     done
-                    and infos[idx].get("terminal_observation") is not None
-                    and infos[idx].get("TimeLimit.truncated", False)
+                    and (
+                    infos[idx].get("terminal_observation") is not None
+                    or infos[idx].get("TimeLimit.truncated", False)
+                    )
                 ):
+                    
+                    if n_steps % 2 == 0:
+                        # gets the reward of the next agent, so we need to change the sign
+                        rewards[0] = -rewards[0]
+                        infos[0]["episode"]["r"] = -infos[0]["episode"]["r"]
+                    # print(infos[0]["episode"]["r"])
+                    # print(rewards)
+                    # input()
+                    self._update_info_buffer(infos)
+                    
                     terminal_obs = self.policy.obs_to_tensor(infos[idx]["terminal_observation"])[0]
                     with th.no_grad():
                         terminal_value = self.policy.predict_values(terminal_obs)[0]
                     rewards[idx] += self.gamma * terminal_value
 
-            rollout_buffer.add(
-                self._last_obs,
-                actions,
-                rewards,
-                self._last_episode_starts,
-                values,
-                log_probs,
-                action_masks=action_masks,
-            )
+            if n_steps % 2 == 0:
+                n_buffer_steps += 1
+                rollout_buffer.add(
+                    self._last_obs,
+                    actions,
+                    rewards,
+                    self._last_episode_starts,
+                    values,
+                    log_probs,
+                    action_masks=action_masks,
+                )
+            #print(rewards)
+            n_steps += 1
             self._last_obs = new_obs
             self._last_episode_starts = dones
-
+            #input()
         with th.no_grad():
             # Compute value for the last timestep
             # Masking is not needed here, the choice of action doesn't matter.
