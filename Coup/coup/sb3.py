@@ -61,8 +61,8 @@ def mask_fn(env):
 
 def train_action_mask(env_fn, steps=10_000, seed=0):
     """Train a single model to play as each agent in a zero-sum game environment using invalid action masking."""
-    env = env_fn.env(render_mode="human")
-    #env = env_fn.env(render_mode=None)
+    #env = env_fn.env(render_mode="human")
+    env = env_fn.env(render_mode=None)
     print(f"Starting training on {str(env.metadata['name'])}.")
 
     # Custom wrapper to convert PettingZoo envs to work with SB3 action masking
@@ -74,11 +74,11 @@ def train_action_mask(env_fn, steps=10_000, seed=0):
     # MaskablePPO behaves the same as SB3's PPO unless the env is wrapped
     # with ActionMasker. If the wrapper is detected, the masks are automatically
     # retrieved and used when learning.
-    model = MaskablePPO(MaskableActorCriticPolicy, env, ent_coef=0, verbose=1)
+    model = MaskablePPO(MaskableActorCriticPolicy, env, ent_coef=0, verbose=1, tensorboard_log="logs/PPO_New")
     model.set_random_seed(seed)
 
     model_name = f"models/{env.unwrapped.metadata.get('name')}_{time.strftime('%d-%m-%Y_%H-%M-%S')}"
-    model.learn(total_timesteps=steps, progress_bar=True, tb_log_name=model_name)
+    model.learn(total_timesteps=steps, progress_bar=True, tb_log_name=model_name.removeprefix("models/"))
 
 
     model.save(model_name)
@@ -130,6 +130,7 @@ def get_best_model(env):
 
 def eval_random_vs_trained(env_fn, num_games=100, model_name=None, render_mode=None):
     # Evaluate a trained agent vs a random agent
+    render_mode = "human"
     env = env_fn.env(render_mode=render_mode)
 
     print(
@@ -182,6 +183,7 @@ def eval_random_vs_trained(env_fn, num_games=100, model_name=None, render_mode=N
                     total_rewards[a] += rewards[a]
                 # List of rewards by round, for reference
                 round_rewards.append(rewards)
+                print(winner)
                 break
             else:
                 if agent == env.possible_agents[0]:
