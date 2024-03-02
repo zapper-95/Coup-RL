@@ -323,11 +323,9 @@ class MaskablePPO(OnPolicyAlgorithm):
                 else:
                     actions, values, log_probs = self.prev_policy(obs_tensor, action_masks=action_masks)
             actions = actions.cpu().numpy()
-            # action_probs = self.policy.action_dist.distribution.probs.tolist()[0]
-            # print(self.policy(obs_tensor, action_masks=action_masks))
+            
 
             new_obs, rewards, dones, infos = env.step(actions)
-            # print(self.policy.get_distribution(obs_tensor))
 
             self.num_timesteps += env.num_envs
 
@@ -568,6 +566,7 @@ class MaskablePPO(OnPolicyAlgorithm):
             done = False
             turn = 0
 
+            self._last_obs = env.reset()
             while not done:
                 with th.no_grad():
                 # Convert to pytorch tensor or to TensorDict
@@ -576,8 +575,7 @@ class MaskablePPO(OnPolicyAlgorithm):
                 action_masks = get_action_masks(env)
 
                 if self.models_turn(turn, model_turn):
-                    action, _, _ = self.policy(obs_tensor, action_masks=action_masks)
-                    action = action.cpu().numpy()
+                    action = np.array([int(self.predict(self._last_obs, action_masks=action_masks)[0])])
                 else:
                     random_action = env.action_space.sample(action_masks.reshape(11,))
                     action = np.array([random_action])
