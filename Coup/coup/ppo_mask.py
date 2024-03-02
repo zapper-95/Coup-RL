@@ -323,9 +323,11 @@ class MaskablePPO(OnPolicyAlgorithm):
                 else:
                     actions, values, log_probs = self.prev_policy(obs_tensor, action_masks=action_masks)
             actions = actions.cpu().numpy()
-            
+            # action_probs = self.policy.action_dist.distribution.probs.tolist()[0]
+            # print(self.policy(obs_tensor, action_masks=action_masks))
 
             new_obs, rewards, dones, infos = env.step(actions)
+            # print(self.policy.get_distribution(obs_tensor))
 
             self.num_timesteps += env.num_envs
 
@@ -394,6 +396,13 @@ class MaskablePPO(OnPolicyAlgorithm):
         
         self.prev_policy = copy.deepcopy(self.policy)
         return True
+    
+    def give_action_probs(self, observations, action_masks):
+
+        # obs_as_tensor does not work when attempting to convert 
+        obs_tensor, _ = self.policy.obs_to_tensor(observations)
+        return self.policy.get_distribution(obs_tensor, action_masks=action_masks).distribution.probs.tolist()[0]
+        # return self.policy.get_distribution(obs_tensor, action_masks=action_masks).probs.tolist()[0]
 
     def predict(
         self,
