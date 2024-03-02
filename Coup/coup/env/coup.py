@@ -574,6 +574,7 @@ class CoupEnv(AECEnv):
                     self.set_game_result()
                 else:
                     # s2
+                    # game has ended, but the previous loser is now the winner
                     self.rewards[agent], self.rewards[other_agent] = self.prev_reward, -self.prev_reward
                     self.set_game_result()
             else:
