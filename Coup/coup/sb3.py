@@ -193,7 +193,7 @@ def eval_random_vs_trained(env_fn, num_games=100, model_name=None, render_mode=N
                     if agent == env.possible_agents[model_id]:
                         act = int(
                             model.predict(
-                                observation, action_masks=action_mask, deterministic=True
+                                observation, action_masks=action_mask, deterministic=False
                             )[0]
                         )
                     else:
@@ -352,12 +352,23 @@ def test_human(env_fn, num_games=1, model_name=None, render_mode=None):
                     act = int(act)
                     print()
                 else:
+                    print()
+                    print("Model's turn")
+                    action_probabilities = model.give_action_probs(
+                        observation, action_masks=action_mask
+                        )
+
+                    for i, prob in enumerate(action_probabilities):
+                        print(f"Action {env.get_action_string(i)}: {prob:.2f}")
+                    
                     act = int(
                         # don't want determinism here
                         model.predict(
-                            observation, action_masks=action_mask, deterministic=False
+                            observation, action_masks=action_mask, deterministic=True
                         )[0]
                     )
+
+
             env.step(act)
     env.close()
 
