@@ -392,7 +392,6 @@ class MaskablePPO(OnPolicyAlgorithm):
 
         callback.on_rollout_end()
         
-        self.prev_policy = copy.deepcopy(self.policy)
         return True
     
     def give_action_probs(self, observations, action_masks):
@@ -621,6 +620,8 @@ class MaskablePPO(OnPolicyAlgorithm):
         while self.num_timesteps < total_timesteps:
             continue_training = self.collect_rollouts(self.env, callback, self.rollout_buffer, self.n_steps, use_masking)
 
+
+
             winrate  = self._eval_vs_random(self.env)
 
             if not continue_training:
@@ -643,6 +644,14 @@ class MaskablePPO(OnPolicyAlgorithm):
                 self.logger.record("time/total_timesteps", self.num_timesteps, exclude="tensorboard")
                 self.logger.dump(step=self.num_timesteps)
 
+
+            # if the previous model was better than the current one, we set the current model to the previous one
+            if safe_mean([ep_info["r"] for ep_info in self.ep_info_buffer]) < 0:
+                print("reverting to previous model")
+                self.policy = copy.deepcopy(self.prev_policy)
+            else:
+                self.prev_policy = copy.deepcopy(self.policy)
+                
             self.train()
 
         callback.on_training_end()
