@@ -18,7 +18,7 @@ from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
 from sb3_contrib.common.wrappers import ActionMasker
 
 import pettingzoo.utils
-import coup_v1
+import coup_v2
 
 
 class SB3ActionMaskWrapper(pettingzoo.utils.BaseWrapper):
@@ -74,11 +74,13 @@ def train_action_mask(env_fn, steps=10_000, seed=0):
     # MaskablePPO behaves the same as SB3's PPO unless the env is wrapped
     # with ActionMasker. If the wrapper is detected, the masks are automatically
     # retrieved and used when learning.
-    model = MaskablePPO(MaskableActorCriticPolicy, env, ent_coef=0, verbose=1, tensorboard_log="logs/PPO_New")
+    ent_coef = 0.1
+
+    model = MaskablePPO(MaskableActorCriticPolicy, env, ent_coef=ent_coef, verbose=1, tensorboard_log="logs/PPO_New")
     model.set_random_seed(seed)
 
     model_name = f"models/{env.unwrapped.metadata.get('name')}_{time.strftime('%d-%m-%Y_%H-%M-%S')}"
-    model.learn(total_timesteps=steps, progress_bar=True, tb_log_name=model_name.removeprefix("models/"))
+    model.learn(total_timesteps=steps, progress_bar=True, tb_log_name=(model_name.removeprefix("models/")+str(ent_coef)))
 
 
     model.save(model_name)
@@ -201,7 +203,6 @@ def eval_random_vs_trained(env_fn, num_games=100, model_name=None, render_mode=N
 
                 env.step(act)
     env.close()
-
     # Avoid dividing by zero
     if sum(scores[0].values()) == 0 or sum(scores[1].values()) == 0:
         winrate = 0
@@ -325,17 +326,17 @@ def test_human(env_fn, num_games=1, model_name=None, render_mode=None):
                         print(f"Previous action: {env.get_action_string(raw_obs[5])}")
 
                         print()
-                        if raw_obs[6] == 5:
+                        if raw_obs[5] == 5:
                             print(f"Agents Card 1: (Hidden)")
                         else:
-                            print(f"Agents Card 1: {env.get_card(raw_obs[6])}")
+                            print(f"Agents Card 1: {env.get_card(raw_obs[5])}")
 
-                        if raw_obs[7] == 5:
+                        if raw_obs[6] == 5:
                             print(f"Agents Card 2: (Hidden)")
                         else:
-                            print(f"Agents Card 2: {env.get_card(raw_obs[7])}")
+                            print(f"Agents Card 2: {env.get_card(raw_obs[6])}")
 
-                        print(f"Agents Coins: {raw_obs[8]}")
+                        print(f"Agents Coins: {raw_obs[7]}")
                         print(f"Agents Previous action: {env.get_action_string(raw_obs[9])}")
                         print("-------------------")
                         print()
@@ -364,7 +365,7 @@ def test_human(env_fn, num_games=1, model_name=None, render_mode=None):
                     act = int(
                         # don't want determinism here
                         model.predict(
-                            observation, action_masks=action_mask, deterministic=True
+                            observation, action_masks=action_mask, deterministic=False
                         )[0]
                     )
 
@@ -389,7 +390,7 @@ if __name__ == "__main__":
 
     
     
-    env_fn = coup_v1
+    env_fn = coup_v2
 
     
     # create the parser
@@ -425,9 +426,9 @@ if __name__ == "__main__":
         rename_model(env_fn, winrate=winrate)
     elif args.command == 'test':
         if args.model_name:
-            eval_random_vs_trained(env_fn, num_games=1, render_mode="human", model_name=args.model_name)
+            eval_random_vs_trained(env_fn, num_games=2, render_mode="human", model_name=args.model_name)
         else:
-            eval_random_vs_trained(env_fn, num_games=1, render_mode="human")
+            eval_random_vs_trained(env_fn, num_games=2, render_mode="human")
     elif args.command == 'evaluate':
             eval_random_vs_trained(env_fn, num_games=1_000, render_mode=None, model_name=args.model_name)
     elif args.command == 'test_human':   
