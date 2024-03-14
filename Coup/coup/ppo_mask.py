@@ -356,9 +356,7 @@ class MaskablePPO(OnPolicyAlgorithm):
                         # gets the reward of the next agent, so we need to change the sign
                         rewards[0] = -rewards[0]
                         infos[0]["episode"]["r"] = -infos[0]["episode"]["r"]
-                    # print(infos[0]["episode"]["r"])
-                    # print(rewards)
-                    # input()
+
                     self._update_info_buffer(infos)
                     
                     terminal_obs = self.policy.obs_to_tensor(infos[idx]["terminal_observation"])[0]
@@ -377,16 +375,19 @@ class MaskablePPO(OnPolicyAlgorithm):
                     log_probs,
                     action_masks=action_masks,
                 )
+
+                with th.no_grad():
+                    # Compute value for the last timestep
+                    # Masking is not needed here, the choice of action doesn't matter.
+                    # We only want the value of the current observation.
+                    values = self.policy.predict_values(obs_as_tensor(self._last_obs, self.device))
+                
             #print(rewards)
             n_steps += 1
             self._last_obs = new_obs
             self._last_episode_starts = dones
             #input()
-        with th.no_grad():
-            # Compute value for the last timestep
-            # Masking is not needed here, the choice of action doesn't matter.
-            # We only want the value of the current observation.
-            values = self.policy.predict_values(obs_as_tensor(new_obs, self.device))
+
 
         rollout_buffer.compute_returns_and_advantage(last_values=values, dones=dones)
 
@@ -555,6 +556,7 @@ class MaskablePPO(OnPolicyAlgorithm):
         """ 
      
         wins = 0
+        reward_total = 0
         self.policy.set_training_mode(False)
 
         for _ in range(n_eval_episodes):
@@ -591,7 +593,9 @@ class MaskablePPO(OnPolicyAlgorithm):
 
             if rewards[0] > 0:
                 wins += 1
-        return wins / n_eval_episodes
+                
+            reward_total += rewards[0]
+        return wins / n_eval_episodes, reward_total/n_eval_episodes
 
 
     def learn(
@@ -622,7 +626,7 @@ class MaskablePPO(OnPolicyAlgorithm):
 
 
 
-            winrate  = self._eval_vs_random(self.env)
+            winrate,reward_avg  = self._eval_vs_random(self.env)
 
             if not continue_training:
                 break
@@ -634,7 +638,8 @@ class MaskablePPO(OnPolicyAlgorithm):
             if log_interval is not None and iteration % log_interval == 0:
                 time_elapsed = max((time.time_ns() - self.start_time) / 1e9, sys.float_info.epsilon)
                 fps = int((self.num_timesteps - self._num_timesteps_at_start) / time_elapsed)
-                self.logger.record("eval/winrate_vs_random", winrate)
+                self.logger.record("eval_random/winrate", winrate)
+                self.logger.record("eval_random/rew_mean", reward_avg)
                 self.logger.record("time/iterations", iteration, exclude="tensorboard")
                 if len(self.ep_info_buffer) > 0 and len(self.ep_info_buffer[0]) > 0:
                     self.logger.record("rollout/ep_rew_mean", safe_mean([ep_info["r"] for ep_info in self.ep_info_buffer]))
