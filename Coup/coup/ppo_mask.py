@@ -299,6 +299,7 @@ class MaskablePPO(OnPolicyAlgorithm):
         # Switch to eval mode (this affects batch norm / dropout)
         self.policy.set_training_mode(False)
         self.prev_policy.set_training_mode(False)
+        
         n_steps = 0
         n_buffer_steps = 0
         action_masks = None
@@ -319,6 +320,7 @@ class MaskablePPO(OnPolicyAlgorithm):
                     action_masks = get_action_masks(env)
                 
                 if self.models_turn(n_steps):
+                    #print(self._last_obs)
                     actions, values, log_probs = self.policy(obs_tensor, action_masks=action_masks)
                 else:
                     actions, values, log_probs = self.prev_policy(obs_tensor, action_masks=action_masks)
@@ -351,16 +353,21 @@ class MaskablePPO(OnPolicyAlgorithm):
                     or infos[idx].get("TimeLimit.truncated", False)
                     )
                 ):
-                    
+                    #print(self._last_obs)
+                    #print(infos[idx]["terminal_observation"])
                     if self.models_turn(n_steps):
                         # gets the reward of the next agent, so we need to change the sign
                         rewards[0] = -rewards[0]
                         infos[0]["episode"]["r"] = -infos[0]["episode"]["r"]
+
+                        # terminal observation is the observation of the next player so we need to change it to the previous that the agent saw
+                        infos[idx]["terminal_observation"] = self._last_obs
                     # print(infos[0]["episode"]["r"])
                     # print(rewards)
                     # input()
                     self._update_info_buffer(infos)
                     
+                    # is this the terminal observation of the next player?
                     terminal_obs = self.policy.obs_to_tensor(infos[idx]["terminal_observation"])[0]
                     with th.no_grad():
                         terminal_value = self.policy.predict_values(terminal_obs)[0]
