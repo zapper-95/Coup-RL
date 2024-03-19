@@ -425,9 +425,9 @@ if __name__ == "__main__":
         rename_model(env_fn, winrate=winrate)
     elif args.command == 'test':
         if args.model_name:
-            eval_random_vs_trained(env_fn, num_games=1, render_mode="human", model_name=args.model_name)
+            eval_random_vs_trained(env_fn, num_games=2, render_mode="human", model_name=args.model_name)
         else:
-            eval_random_vs_trained(env_fn, num_games=1, render_mode="human")
+            eval_random_vs_trained(env_fn, num_games=2, render_mode="human")
     elif args.command == 'evaluate':
             eval_random_vs_trained(env_fn, num_games=1_000, render_mode=None, model_name=args.model_name)
     elif args.command == 'test_human':   
