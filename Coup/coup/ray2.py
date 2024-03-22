@@ -6,47 +6,49 @@ Author: Rohan (https://github.com/Rohan138)
 import os
 
 import ray
-from gymnasium.spaces import Box, Discrete
+from gymnasium.spaces import Box, Discrete, MultiDiscrete
 from ray import tune
-from ray.rllib.algorithms.dqn import DQNConfig
-from ray.rllib.algorithms.dqn.dqn_torch_model import DQNTorchModel
+from registry import get_algorithm_class
+from ray.rllib.algorithms.ppo import PPOConfig
+from ray.rllib.algorithms.ppo.ppo_torch_policy import PPOTorchPolicy
 from ray.rllib.env import PettingZooEnv
 from ray.rllib.models import ModelCatalog
 from ray.rllib.models.torch.fcnet import FullyConnectedNetwork as TorchFC
-from ray.rllib.utils.framework import try_import_torch
+from ray.rllib.utils.framework import try_import_tf, try_import_torch
 from ray.rllib.utils.torch_utils import FLOAT_MAX
 from ray.tune.registry import register_env
+import logging
+from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
+from copy import deepcopy
+from ray.rllib.utils.typing import ModelConfigDict, TensorType
 
-from pettingzoo.classic import leduc_holdem_v4
+import coup_v1
 
+tf1, tf, tfv = try_import_tf()
 torch, nn = try_import_torch()
 
 
-class TorchMaskedActions(DQNTorchModel):
-    """PyTorch version of above ParametricActionsModel."""
-
+class TorchMaskedActions(TorchModelV2, nn.Module):
     def __init__(
         self,
-        obs_space: Box,
-        action_space: Discrete,
+        obs_space,
+        action_space,
         num_outputs,
-        model_config,
-        name,
-        **kw,
+        model_config: ModelConfigDict,
+        name: str,
+        **kwargs,
     ):
-        DQNTorchModel.__init__(
-            self, obs_space, action_space, num_outputs, model_config, name, **kw
-        )
+        nn.Module.__init__(self)
+        TorchModelV2.__init__(self, obs_space, action_space, num_outputs, model_config, name, **kwargs)
 
-        obs_len = obs_space.shape[0] - action_space.n
-
-        orig_obs_space = Box(
-            shape=(obs_len,), low=obs_space.low[:obs_len], high=obs_space.high[:obs_len]
-        )
+        # Assuming 'observation' is a part of your observation space that represents the actual observations
+        # and 'action_mask' represents the mask for available actions.
+        self.orig_obs_space = obs_space.original_space["observation"]
+        
         self.action_embed_model = TorchFC(
-            orig_obs_space,
+            self.orig_obs_space,
             action_space,
-            action_space.n,
+            num_outputs,
             model_config,
             name + "_action_embed",
         )
@@ -59,71 +61,106 @@ class TorchMaskedActions(DQNTorchModel):
         action_logits, _ = self.action_embed_model(
             {"obs": input_dict["obs"]["observation"]}
         )
-        # turns probit action mask into logit action mask
-        inf_mask = torch.clamp(torch.log(action_mask), -1e10, FLOAT_MAX)
+        
+        # Apply mask
+        inf_mask = torch.clamp(torch.log(action_mask), min=-1e10, max=torch.finfo(torch.float32).max)
+        masked_logits = action_logits + inf_mask
 
-        return action_logits + inf_mask, state
+        return masked_logits, state
 
     def value_function(self):
         return self.action_embed_model.value_function()
 
 
-if __name__ == "__main__":
-    ray.init()
-
-    alg_name = "DQN"
-    ModelCatalog.register_custom_model("pa_model", TorchMaskedActions)
+def train():
+    alg_name = "PPO"
+    # ModelCatalog.register_custom_model("pa_model", TorchMaskedActions)
     # function that outputs the environment you wish to register.
 
     def env_creator():
-        env = leduc_holdem_v4.env()
+        env = coup_v1.env()
         return env
 
-    env_name = "leduc_holdem_v4"
+
+    num_cpus = 1
+    #class_mate = get_algorithm_class(alg_name, True)
+    #config = deepcopy(get_algorithm_class(alg_name).get_default_config())
+
+    env_name = "coup_v1"
     register_env(env_name, lambda config: PettingZooEnv(env_creator()))
 
     test_env = PettingZooEnv(env_creator())
     obs_space = test_env.observation_space
+    print(obs_space)
     act_space = test_env.action_space
 
-    config = (
-        DQNConfig()
-        .environment(env=env_name)
-        .rollouts(num_rollout_workers=1, rollout_fragment_length=30)
-        .training(
-            train_batch_size=200,
-            hiddens=[],
-            dueling=False,
-            model={"custom_model": "pa_model"},
-        )
-        .multi_agent(
-            policies={
-                "player_0": (None, obs_space, act_space, {}),
-                "player_1": (None, obs_space, act_space, {}),
-            },
-            policy_mapping_fn=(lambda agent_id, *args, **kwargs: agent_id),
-        )
-        .resources(num_gpus=int(os.environ.get("RLLIB_NUM_GPUS", "0")))
-        .debugging(
-            log_level="DEBUG"
-        )  # TODO: change to ERROR to match pistonball example
-        .framework(framework="torch")
-        .exploration(
-            exploration_config={
-                # The Exploration class to use.
-                "type": "EpsilonGreedy",
-                # Config for the Exploration class' constructor:
-                "initial_epsilon": 0.1,
-                "final_epsilon": 0.0,
-                "epsilon_timesteps": 100000,  # Timesteps over which to anneal epsilon.
-            }
-        )
+    # Initialize PPOConfig
+    config = PPOConfig()
+
+    # Configure training parameters and the custom model
+    config = config.training(
+        gamma=0.9, 
+        lr=0.01, 
+        kl_coeff=0.3, 
+        model={
+            "custom_model": "pa_model",  # Use the key you registered your custom model with
+            # Add any additional model configuration here if needed
+        },
+        _enable_learner_api=False
     )
+
+    # Configure resources
+    config = config.resources(
+        num_gpus=0,
+    )
+
+    # Configure rollouts
+    config = config.rollouts(
+        num_rollout_workers=1
+    )
+
+    # Configure multi-agent setup
+    # Ensure 'obs_space' and 'act_space' are correctly defined for your environment
+    config = config.multi_agent(
+        policies={
+            "player_1": (None, obs_space, act_space, {}),
+            "player_2": (None, obs_space, act_space, {})
+        }
+        # Additional multi-agent configurations can be added here
+    )
+
+    config.rl_module( _enable_rl_module_api=False)
+    # Optionally, print out the configuration to verify
+    print(config.to_dict())
+    ray.init(num_cpus=num_cpus + 1)
 
     tune.run(
         alg_name,
-        name="DQN",
-        stop={"timesteps_total": 10000000 if not os.environ.get("CI") else 50000},
+        name="PPO-coup",
+        stop={"timesteps_total": 10000000},
         checkpoint_freq=10,
-        config=config.to_dict(),
+        config=config,
     )
+
+
+train()
+
+    # # Get the current working directory
+    # current_working_directory = os.getcwd()
+
+    # # Define your relative path
+    # relative_path = './checkpoints/'
+    # os.makedirs(relative_path, exist_ok=True)
+
+    # # Concatenate them to form an absolute path
+    # abs_checkpoint = os.path.join(current_working_directory, relative_path)
+    
+
+    # tune.run(
+    #     alg_name,
+    #     name="PPO",
+    #     stop={"timesteps_total": 100},
+    #     checkpoint_config={"checkpoint_frequency": 100, "checkpoint_at_end": True},
+    #     local_dir=abs_checkpoint,
+    #     config=config.to_dict(),
+    # )
