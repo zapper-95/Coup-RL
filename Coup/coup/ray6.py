@@ -1,4 +1,13 @@
-"""Example showing how to use "action masking" in RLlib.
+"""
+Code to train a PPO agent on the Coup environment using Ray RLlib.
+
+This code is based on the action masking example from the RLlib repository:
+https://github.com/ray-project/ray/blob/master/rllib/examples/action_masking.py#L52
+
+
+
+
+Example showing how to use "action masking" in RLlib.
 
 "Action masking" allows the agent to select actions based on the current
 observation. This is useful in many practical scenarios, where different
@@ -61,7 +70,9 @@ from ray.rllib.utils.torch_utils import FLOAT_MAX
 
 
 torch, nn = try_import_torch()
-class CustomTorchModel(TorchModelV2, nn.Module):
+class ActionMaskModel(TorchModelV2, nn.Module):
+    """Custom PyTorch model to handle action masking, and processing multi-discrete observations."""
+
     def __init__(self, obs_space, action_space, num_outputs, model_config, name):
         TorchModelV2.__init__(self, obs_space, action_space, num_outputs, model_config, name)
         nn.Module.__init__(self)
@@ -69,8 +80,6 @@ class CustomTorchModel(TorchModelV2, nn.Module):
         self.action_space = action_space
         self.obs_space = obs_space
 
-        # Adjusted access to the 'observations' subspace for network initialization
-        obs_size = obs_space.spaces['observations'].shape[0]
         self.fcnet = TorchFC(obs_space.spaces['observations'], action_space, num_outputs, model_config, name)
 
     def forward(self, input_dict, state, seq_lens):
@@ -91,9 +100,6 @@ class CustomTorchModel(TorchModelV2, nn.Module):
     def value_function(self):
         return self.fcnet.value_function()
 
-# Make sure to register the custom model before using it in the configuration
-ModelCatalog.register_custom_model("pa_model", CustomTorchModel)
-
 
 def env_creator(render=None):
     if render:
@@ -102,54 +108,31 @@ def env_creator(render=None):
         env = coup_v1.env()
     return env
 
-def get_cli_args():
-    """Create CLI parser and return parsed arguments"""
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("--num-cpus", type=int, default=0)
-    parser.add_argument(
-        "--framework",
-        choices=["tf", "tf2", "torch"],
-        default="torch",
-        help="The DL framework specifier.",
-    )
-    parser.add_argument(
-        "--stop-iters", type=int, default=1, help="Number of iterations to train."
-    )
-    parser.add_argument(
-        "--local-mode",
-        action="store_true",
-        help="Init Ray in local mode for easier debugging.",
-    )
-
-    args = parser.parse_args()
-    print(f"Running with following CLI args: {args}")
-    return args
-
 
 if __name__ == "__main__":
-    args = get_cli_args()
 
-    ray.init(num_cpus=args.num_cpus or None, local_mode=args.local_mode)
-
-    if args.framework == "torch":
-        rlm_class = TorchActionMaskRLM
-    else:
-        rlm_class = TFActionMaskRLM
-
-
-    rlm_spec = SingleAgentRLModuleSpec(module_class=rlm_class)
-
-    ModelCatalog.register_custom_model("pa_model", CustomTorchModel)
+    
+    ModelCatalog.register_custom_model("am_model", ActionMaskModel)
 
     register_env("Coup", lambda config: PettingZooEnv(env_creator()))
 
 
-    # main part: configure the ActionMaskEnv and ActionMaskModel
+    test_env = PettingZooEnv(env_creator())
+    obs_space = test_env.observation_space
+    act_space = test_env.action_space
+
+
     config = (
         ppo.PPOConfig()
+        .multi_agent(
+            policies={
+                "player_1": (None, obs_space, act_space, {}),
+                "player_2": (None, obs_space, act_space, {}),
+            },
+            policy_mapping_fn=(lambda agent_id, *args, **kwargs: agent_id),
+        )
         .training(
-            model={"custom_model": "pa_model"},
+            model={"custom_model": "am_model"},
             _enable_learner_api=False,
         )
         .environment(
@@ -167,12 +150,12 @@ if __name__ == "__main__":
             },
         )
         # We need to disable preprocessing of observations, because preprocessing
-        # would flatten the observation dict of the environment.
+        # would flatten the observation dict of the environment before it is passed to the model.
         .experimental(
             #_enable_new_api_stack=True,
             _disable_preprocessor_api=True,            
         )
-        .framework(args.framework)
+        .framework("torch")
         .resources(
             # Use GPUs iff `RLLIB_NUM_GPUS` env var set to > 0.
             num_gpus=int(os.environ.get("RLLIB_NUM_GPUS", "0"))
@@ -180,51 +163,17 @@ if __name__ == "__main__":
         .rl_module(_enable_rl_module_api=False)
 
     )
+    ray.init()
 
-    #algo = config.build()
-
+    os.makedirs("ray_results", exist_ok=True)
 
     tune.run(
         "PPO",
         name="PPO",
-        stop={"timesteps_total": 10_000},
+        stop={"timesteps_total": 1_000_000},
         checkpoint_config= CheckpointConfig(checkpoint_at_end=True),
         config=config.to_dict(),
+        local_dir= os.path.abspath("./ray_results"),
     )
-    # run manual training loop and print results after each iteration
-    # for _ in range(args.stop_iters):
-    #     result = algo.train()
-    #     print(pretty_print(result))
 
-    # manual test loop
-    print("Finished training. Running manual test/inference loop.")
-    # prepare environment with max 10 steps
-    #config["env_config"]["max_episode_len"] = 10
-
-
-
-
-
-    # env = env_creator(render=True)
-    # obs, info = env.reset()
-    # done = False
-    # # run one iteration until done
-    # print(f"Coup with {config['env_config']}")
-    # while not done:
-    #     obs, reward, termination, truncation, info = env.last()
-    #     # strip the "player prefix from the observation"
-        # for player_key, player_data in obs.items():
-        #     # Assuming 'player_data' is a dictionary with 'observations' and 'action_mask'
-        #     observations = player_data['observations']
-        #     action_masks = player_data['action_mask']
-
-        # observations = {"observations": observations}
-        # action = algo.compute_single_action(observations)
-    #     next_obs, reward, done, truncated, _ = env.step(action)
-    #     # observations contain original observations and the action mask
-    #     # reward is random and irrelevant here and therefore not printed
-    #     #print(f"Obs: {obs}, Action: {action}")
-    #     obs = next_obs
-
-    # print("Finished successfully without selecting invalid actions.")
-    # ray.shutdown()
+    print("Finished training.")
