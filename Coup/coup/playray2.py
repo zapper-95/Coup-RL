@@ -3,21 +3,21 @@ from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.env.wrappers.pettingzoo_env import PettingZooEnv
 from ray.tune.registry import register_env
 from ray.rllib.models import ModelCatalog
-from ray6 import CustomTorchModel
+from train_ppo import ActionMaskModel
 
 
-num_games = 1
+num_games = 10
 
 
 
-checkpoint_path = "C:/Users/josep/ray_results\PPO\PPO_Coup_1499a_00000_0_2024-03-22_12-02-39\checkpoint_000000"
+checkpoint_path = "C:/Users/josep/ray_results\PPO\PPO_Coup_0455a_00000_0_2024-03-22_12-23-40\checkpoint_000000"
 
 def env_creator():
     env = coup_v1.env()
     return env
 
 
-ModelCatalog.register_custom_model("pa_model", CustomTorchModel)
+ModelCatalog.register_custom_model("pa_model", ActionMaskModel)
 register_env("Coup", lambda config: PettingZooEnv(env_creator()))
 PPO_agent = Algorithm.from_checkpoint(checkpoint_path)
 
