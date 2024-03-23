@@ -3,7 +3,7 @@ from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.env.wrappers.pettingzoo_env import PettingZooEnv
 from ray.tune.registry import register_env
 from ray.rllib.models import ModelCatalog
-from Coup.coup.train_ppo import ActionMaskModel
+from train_ppo import ActionMaskModel
 from utils import get_last_agent_path
 
 
