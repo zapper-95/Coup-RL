@@ -1,0 +1,60 @@
+Failure # 1 (occurred at 2024-03-22_14-03-02)
+[36mray::PPO.train()[39m (pid=22340, ip=127.0.0.1, actor_id=37b301259e7a4f9c793d75a201000000, repr=PPO)
+  File "python\ray\_raylet.pyx", line 1616, in ray._raylet.execute_task
+  File "python\ray\_raylet.pyx", line 1556, in ray._raylet.execute_task.function_executor
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\_private\function_manager.py", line 726, in actor_method_executor
+    return method(__ray_actor, *args, **kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\tune\trainable\trainable.py", line 400, in train
+    raise skipped from exception_cause(skipped)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\tune\trainable\trainable.py", line 397, in train
+    result = self.step()
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\algorithms\algorithm.py", line 853, in step
+    results, train_iter_ctx = self._run_one_training_iteration()
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\algorithms\algorithm.py", line 2838, in _run_one_training_iteration
+    results = self.training_step()
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\algorithms\ppo\ppo.py", line 429, in training_step
+    train_batch = synchronous_parallel_sample(
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\execution\rollout_ops.py", line 85, in synchronous_parallel_sample
+    sample_batches = worker_set.foreach_worker(
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\worker_set.py", line 680, in foreach_worker
+    handle_remote_call_result_errors(remote_results, self._ignore_worker_failures)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\worker_set.py", line 76, in handle_remote_call_result_errors
+    raise r.get()
+ray.exceptions.RayTaskError(TypeError): [36mray::RolloutWorker.apply()[39m (pid=22348, ip=127.0.0.1, actor_id=6e6f786a251fcfce8b6da78801000000, repr=<ray.rllib.evaluation.rollout_worker.RolloutWorker object at 0x0000028CF1258A30>)
+  File "python\ray\_raylet.pyx", line 1616, in ray._raylet.execute_task
+  File "python\ray\_raylet.pyx", line 1556, in ray._raylet.execute_task.function_executor
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\_private\function_manager.py", line 726, in actor_method_executor
+    return method(__ray_actor, *args, **kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\utils\actor_manager.py", line 185, in apply
+    raise e
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\utils\actor_manager.py", line 176, in apply
+    return func(self, *args, **kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\execution\rollout_ops.py", line 86, in <lambda>
+    lambda w: w.sample(), local_worker=False, healthy_only=True
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\rollout_worker.py", line 696, in sample
+    batches = [self.input_reader.next()]
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\sampler.py", line 92, in next
+    batches = [self.get_data()]
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\sampler.py", line 277, in get_data
+    item = next(self._env_runner)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\env_runner_v2.py", line 344, in run
+    outputs = self.step()
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\env_runner_v2.py", line 370, in step
+    active_envs, to_eval, outputs = self._process_observations(
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\env_runner_v2.py", line 536, in _process_observations
+    policy_id: PolicyID = episode.policy_for(agent_id)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\episode_v2.py", line 120, in policy_for
+    policy_id = self._agent_to_policy[agent_id] = self.policy_mapping_fn(
+TypeError: <lambda>() got an unexpected keyword argument 'worker'
