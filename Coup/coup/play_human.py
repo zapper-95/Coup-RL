@@ -3,7 +3,7 @@ from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.env.wrappers.pettingzoo_env import PettingZooEnv
 from ray.tune.registry import register_env
 from ray.rllib.models import ModelCatalog
-from Coup.coup.train_ppo import ActionMaskModel
+from train_ppo import ActionMaskModel
 from utils import get_last_agent_path
 
 num_games = 10
@@ -64,7 +64,36 @@ while True:
                         print(f"Action {i}: {env.get_action_string(i)}")
                 act = int(input())
             else:
-                act = PPO_agent.compute_single_action(obs, policy_id="player_2")
-                print(PPO_agent.compute_single_action(obs, policy_id="player_2", full_fetch=True))
+
+                policy = PPO_agent.get_policy(policy_id="player_2")
+
+                act, state, extra_fetches = policy.compute_single_action(obs)
+
+
+                # get the model that processes observations
+                model = PPO_agent.get_policy("player_2").model
+
+                # get the logits of the action distribution
+                dist_inputs = extra_fetches['action_dist_inputs']
+
+                # get the action distribution class
+                dist_class = policy.dist_class
+
+                # create the action distribution using the logits
+                action_dist = dist_class(dist_inputs, model)
+
+
+                # print value estimate of the state
+                print(f"Predicted value: {extra_fetches['vf_preds']} \n")
+
+                # print the action probabilities
+                print("Probabilities:")
+                probs = action_dist.dist.probs
+                probs = ["{:.2f}".format(value) for value in probs.tolist()]
+                
+                for i in range(len(action_mask)):
+                    if action_mask[i] == 1:
+                        print(f"{env.get_action_string(i)} : {probs[i]}")
+
         env.step(act)
 env.close()
