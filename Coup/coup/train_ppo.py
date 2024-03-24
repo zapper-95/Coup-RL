@@ -101,12 +101,14 @@ if __name__ == "__main__":
             # some actions are declared invalid and lead to errors
             "Coup",
             env_config={
-                "action_space": Discrete(11),
+                "action_space": act_space,
+                #"action_space": Discrete(11),
                 # This is not going to be the observation space that our RLModule sees.
                 # It's only the configuration provided to the environment.
                 # The environment will instead create Dict observations with
                 # the keys "observations" and "action_mask".
-                "observations_space": MultiDiscrete([5, 5, 2, 2, 14, 11, 6, 6, 14, 11]),
+                #"observations_space": MultiDiscrete([5, 5, 2, 2, 14, 6, 6, 14, 11, 11]),
+                "observation_space": obs_space["observations"]
                 
             },
         )
@@ -131,10 +133,10 @@ if __name__ == "__main__":
     tune.run(
         "PPO",
         name="PPO",
-        stop={"timesteps_total": 1_000_000},
+        stop={"training_iteration": 100},
         checkpoint_config= CheckpointConfig(checkpoint_at_end=True),
         config=config.to_dict(),
-        local_dir= os.path.abspath("./ray_results"),
+        local_dir= os.path.normpath(os.path.abspath("./ray_results")),
     )
 
     print("Finished training.")
