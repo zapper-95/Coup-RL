@@ -48,12 +48,14 @@ def env(render_mode=None):
 
 class CoupEnv(AECEnv):
     metadata = {
-        "name": "coup_v1",
+        "name": "coup_v2",
     }
 
-    def __init__(self, render_mode=None):
-        
-        
+    def __init__(self, render_mode=None, k_actions=10):
+        assert k_actions >= 2
+        self.k_actions = k_actions
+
+
         self.render_mode = render_mode
     
 
@@ -99,11 +101,10 @@ class CoupEnv(AECEnv):
                         2,
                         2,
                         14,
-                        len(ACTIONS),
                         len(CARDS)+1,
                         len(CARDS)+1,
                         14,
-                        len(ACTIONS)
+                        *[len(ACTIONS) for _ in range(self.k_actions)]
                     ]),
                     "action_mask": MultiBinary(len(ACTIONS)),
                 }
@@ -129,12 +130,21 @@ class CoupEnv(AECEnv):
         
         return CARDS[card_id]
 
-    def update_player_action(self, action:dict[str, int]) -> None:
-        """Updates the last action of a given player."""
-        if "player_1" in action:
-            self.state_space["player_1_action"] = action["player_1"]
-        else:
-            self.state_space["player_2_action"] = action["player_2"]
+
+    def update_action_history(self, action:int) -> None:
+        """Updates the action history of the environment."""
+        self.action_history.append(action)
+
+        # -2 because each player starts with actions "none" and "none"
+        if len(self.action_history)> self.k_actions:
+            self.action_history.pop(0)
+
+    # def update_player_action(self, action_dict:dict[str, int]) -> None:
+    #     """Updates the last action of a given player."""
+    #     if "player_1" in action_dict:
+    #         self.update_action_history(action_dict["player_1"])
+    #     else:
+    #         self.update_action_history(action_dict["player_2"])
 
     
     def observation_space(self, agent):
@@ -186,11 +196,14 @@ class CoupEnv(AECEnv):
 
         legal_moves = []
         
-        other_action = self.state_space[f"{other_agent}_action"]
-        other_action_str = self.get_action_string(other_action)
 
-        player_past_action = self.state_space[f"{agent}_action"]
+        player_past_action = self.action_history[-2]
+        other_action = self.action_history[-1]
+
+
         player_past_action_str = self.get_action_string(player_past_action)
+        other_action_str = self.get_action_string(other_action) 
+
 
         # get legal moves
         if other_action_str == "counteract":
@@ -250,23 +263,23 @@ class CoupEnv(AECEnv):
                 int(self.state_space[f"{agent}_card_1_alive"]),
                 int(self.state_space[f"{agent}_card_2_alive"]),
                 self.state_space[f"{agent}_coins"],
-                self.state_space[f"{agent}_action"],
                 CARDS.index(self.state_space[f"{other_agent}_card_1"]),
                 CARDS.index(self.state_space[f"{other_agent}_card_2"]),
                 self.state_space[f"{other_agent}_coins"],
-                self.state_space[f"{other_agent}_action"]
+
             ]
         )
 
-
-        # # hide the other player's cards if they are alive
+        # hide the other player's cards if they are alive
         if self.state_space[f"{other_agent}_card_1_alive"]:
             observation[6] = len(CARDS)
         
         if self.state_space[f"{other_agent}_card_2_alive"]:
             observation[7] = len(CARDS)
 
-
+        # array with actions padded on with nones, up to k actions
+        action_history_array = np.array([self.action_history[i] if i < len(self.action_history) else ACTIONS.index("none") for i in range(self.k_actions)])
+        observation = np.concatenate((observation, action_history_array))
 
         return {"observations": observation, "action_mask": action_mask}
         
@@ -303,9 +316,9 @@ class CoupEnv(AECEnv):
             "player_2_card_2_alive": True,
             "player_1_coins": 1,
             "player_2_coins": 2,
-            "player_1_action": ACTIONS.index("none"),
-            "player_2_action": ACTIONS.index("none")
         }
+
+        self.action_history = [ACTIONS.index("none"), ACTIONS.index("none")]
 
         self.player_turn = 0
 
@@ -321,6 +334,9 @@ class CoupEnv(AECEnv):
     def process_action(self, agent:str, other_agent:str, action:int) -> None:
         """Processes the action of a player, and updates the state space accordingly."""
         action_str = self.get_action_string(action)
+        agent_past_action = self.action_history[-2]
+        other_player_action = self.action_history[-1]
+
 
         if action_str == "income":
             self.state_space[f"{agent}_coins"] += 1
@@ -347,30 +363,30 @@ class CoupEnv(AECEnv):
         elif action_str == "coup" and self.state_space[f"{agent}_coins"] >= 7:
             self.state_space[f"{agent}_coins"] -= 7
             self.loose_card(other_agent)
-        elif action_str == "counteract" and self.can_counteract(self.state_space[f"{other_agent}_action"]):
-            self.reverse_action(other_agent, agent, self.state_space[f"{other_agent}_action"])
+        elif action_str == "counteract" and self.can_counteract(other_player_action):
+            self.reverse_action(other_agent, agent, other_player_action)
             
-        elif action_str == "challenge" and self.can_challenge(self.state_space[f"{other_agent}_action"]):
-            if self.get_action_string(self.state_space[f"{other_agent}_action"]) != "counteract":
+        elif action_str == "challenge" and self.can_challenge(other_player_action):
+            if self.get_action_string(other_player_action) != "counteract":
                 # if a normal action is being challenged
                 
                 # check whether that action was legal
-                    if self.action_legal(other_agent, self.state_space[f"{other_agent}_action"]):
+                    if self.action_legal(other_agent, other_player_action):
                         self.loose_card(agent)
                     else:
                         # if the action was not legal, than reverse its effect
-                        self.reverse_action(other_agent, agent, self.state_space[f"{other_agent}_action"])
+                        self.reverse_action(other_agent, agent, other_player_action)
                         self.loose_card(other_agent)
             else:
                 # if it is a counteraction being challenged, check whether the counteraction was legal
-                if self.counteraction_legal(self.state_space[f"{agent}_action"], other_agent):
+                if self.counteraction_legal(agent_past_action, other_agent):
                     self.loose_card(agent)
                 else:
                     # if it was not legal, let the player play their initial action again (without having to pay again if it was assissinate)
-                    if self.get_action_string(self.state_space[f"{agent}_action"]) == "assassinate":
+                    if self.get_action_string(agent_past_action) == "assassinate":
                         self.state_space[f"{agent}_coins"] += 3
 
-                    self.process_action(agent, other_agent, self.state_space[f"{agent}_action"])
+                    self.process_action(agent, other_agent, agent_past_action)
                     self.loose_card(other_agent)
         elif action_str == "pass":
             pass        
@@ -380,7 +396,7 @@ class CoupEnv(AECEnv):
 
 
 
-        self.update_player_action({agent:action})
+        self.update_action_history(action)
 
                 
 
@@ -436,18 +452,6 @@ class CoupEnv(AECEnv):
                     int(self.state_space[f"{other_agent}_card_1_alive"]) 
                     + int(self.state_space[f"{other_agent}_card_2_alive"])
                     )
-    def set_rewards(self, agent:str, other_agent:str) -> None:
-        """Sets the rewards for the players."""
-        reward = ((
-                    int(self.state_space[f"{agent}_card_1_alive"]) 
-                    + int(self.state_space[f"{agent}_card_2_alive"])
-                    )- 
-                    (
-                    int(self.state_space[f"{other_agent}_card_1_alive"]) 
-                    + int(self.state_space[f"{other_agent}_card_2_alive"])
-                    ))
-        self.rewards[agent] = reward
-        self.rewards[other_agent] = -reward
 
     def get_current_winner(self) -> str:
         if self.state_space["player_1_card_2_alive"]:
