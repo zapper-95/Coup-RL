@@ -3,7 +3,7 @@ import numpy as np
 
 
 env = coup_v1.env(render_mode="human")
-env.reset(seed=42)
+env.reset()
 env.render(display_action=False)
 for agent in env.agent_iter():
 
