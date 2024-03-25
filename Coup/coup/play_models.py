@@ -54,11 +54,6 @@ assert (env.observation_space("player_2")["observations"]
 
 
 
-#p1_subspace = [True if i < len(policy1.observation_space["observations"]) else False for i in range(len(env.observation_space("player_1")["observations"]))]
-
-#p2_subspace = [True if i < len(policy2.observation_space["observations"]) else False for i in range(len(env.observation_space("player_2")["observations"]))]
-
-
 
 for i in range(num_games):
     env.reset()
