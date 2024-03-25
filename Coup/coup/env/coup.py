@@ -89,10 +89,10 @@ class CoupEnv(AECEnv):
         self.deck = Deck(CARDS)
 
 
-        self._action_spaces = {agent: Discrete(11) for agent in self.agents}
+        self.action_spaces = {agent: Discrete(11) for agent in self.agents}
 
         # the players can see all of the state, but other players hands
-        self._observation_spaces = {
+        self.observation_spaces = {
             agent: Dict(
                 {
                     "observations": MultiDiscrete([
@@ -148,10 +148,10 @@ class CoupEnv(AECEnv):
 
     
     def observation_space(self, agent):
-        return self._observation_spaces[agent]
+        return self.observation_spaces[agent]
     
     def action_space(self, agent):
-        return self._action_spaces[agent]
+        return self.action_spaces[agent]
 
 
     def render(self, action=10, display_action=True):
