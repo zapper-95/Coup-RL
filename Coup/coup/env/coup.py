@@ -278,7 +278,9 @@ class CoupEnv(AECEnv):
             observation[7] = len(CARDS)
 
         # array with actions padded on with nones, up to k actions
-        action_history_array = np.array([self.action_history[i] if i < len(self.action_history) else ACTIONS.index("none") for i in range(self.k_actions)])
+        action_history_array = np.array([ACTIONS.index("none") for _ in range(self.k_actions)])
+        action_history_array[-len(self.action_history):] = self.action_history
+        
         observation = np.concatenate((observation, action_history_array))
 
         return {"observations": observation, "action_mask": action_mask}
