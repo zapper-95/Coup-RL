@@ -40,3 +40,34 @@ def get_last_agent_path(alg_name="PPO"):
 
 
     return latest_checkpoint_dir
+
+
+def get_penultimate_agent_path(alg_name="PPO"):
+    """Gets the path to the second most recent folder and checkpoint for a given algorithm."""
+
+
+    # Define the path to the results folder
+    results_folder_path = os.path.abspath("./ray_results/{}".format(alg_name))
+
+    # Corrected: Filter only directories for experiments
+    experiment_folders = [f for f in glob(os.path.join(results_folder_path, "{}_*".format(alg_name))) if os.path.isdir(f)]
+    print(f"Experiment folders found: {experiment_folders}")
+
+    # Find the most recent experiment folder
+    second_latest = sorted(experiment_folders, key=os.path.getmtime)[-2]
+    print(f"Second latest experiment folder: {second_latest}")
+
+    # Corrected: More accurately find checkpoint directories within the latest experiment folder
+    checkpoint_dirs = glob(os.path.join(second_latest, "checkpoint_*"), recursive=True)
+    print(f"Checkpoint directories found: {checkpoint_dirs}")
+
+    if not checkpoint_dirs:
+        raise ValueError("No checkpoints found in the second latest experiment directory.")
+
+    # Find the most recent checkpoint based on checkpoint number
+    second_checkpoint_dir = max(checkpoint_dirs, key=lambda x: int(os.path.basename(x).split('_')[-1]))
+    print(f"Second latest checkpoint directory: {second_checkpoint_dir}")
+
+
+
+    return second_checkpoint_dir
