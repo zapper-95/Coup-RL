@@ -4,7 +4,7 @@ from ray.rllib.env.wrappers.pettingzoo_env import PettingZooEnv
 from ray.tune.registry import register_env
 from ray.rllib.models import ModelCatalog
 from train_ppo import ActionMaskModel
-from utils import get_last_agent_path
+from utils import get_last_agent_path, get_penultimate_agent_path
 
 
 num_games = 1000
@@ -12,19 +12,21 @@ num_games = 1000
 
 
 checkpoint_path = get_last_agent_path()
+#checkpoint_path = get_penultimate_agent_path()
 
 def env_creator():
-    env = coup_v1.env()
+    env = coup_v1.env(k_actions=10)
     return env
 
 
 ModelCatalog.register_custom_model("am_model", ActionMaskModel)
 register_env("Coup", lambda config: PettingZooEnv(env_creator()))
-PPO_agent = Algorithm.from_checkpoint(checkpoint_path)
+
+policy2 = Algorithm.from_checkpoint(checkpoint_path).get_policy(policy_id="player_2")
 
 
 
-env = coup_v1.env(render_mode=None)
+env = env_creator()
 scores = {agent: 0 for agent in env.possible_agents}
 total_rewards = {agent: 0 for agent in env.possible_agents}
 round_rewards = []
@@ -56,7 +58,7 @@ for i in range(num_games):
             if agent == env.possible_agents[0]:
                 act = env.action_space(agent).sample(action_mask)
             else:
-                act = PPO_agent.compute_single_action(obs, policy_id="player_2")
+                act = policy2.compute_single_action(obs)[0]
         env.step(act)
 env.close()
 
