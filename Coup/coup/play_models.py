@@ -26,9 +26,13 @@ register_env("Coup", lambda config: PettingZooEnv(env_creator()))
 policy1 = Algorithm.from_checkpoint(model_1_path).get_policy(policy_id="player_1")
 policy2 = Algorithm.from_checkpoint(model_2_path).get_policy(policy_id="player_2")
 
+obs_space_1 = len(policy1.observation_space["observations"])
+obs_space_2 = len(policy2.observation_space["observations"])
 
+# k past actions is equal the max observation space minus that 
+k = max(obs_space_1, obs_space_2) + 2 - len(coup_v1.env(k_actions=2).observation_space("player_1")["observations"])
 
-env = coup_v1.env(render_mode=None)
+env = coup_v1.env(render_mode=None, k_actions=k)
 scores = {agent: 0 for agent in env.possible_agents}
 total_rewards = {agent: 0 for agent in env.possible_agents}
 round_rewards = []
@@ -37,20 +41,22 @@ round_rewards = []
 
 # ensure policy 1's observations are equal to a slice of the environments observations
 assert (env.observation_space("player_1")["observations"]
-    [:len(policy1.observation_space["observations"])]
+    [:obs_space_1]
     == 
     policy1.observation_space["observations"])
 
 
 # ensure policy 2's observations are equal to a slice of the environments observations
 assert (env.observation_space("player_2")["observations"]
-    [:len(policy2.observation_space["observations"])]
+    [:obs_space_2]
     == 
     policy2.observation_space["observations"])
 
-p1_subspace = [True if i < len(policy1.observation_space["observations"]) else False for i in range(len(env.observation_space("player_1")["observations"]))]
 
-p2_subspace = [True if i < len(policy2.observation_space["observations"]) else False for i in range(len(env.observation_space("player_2")["observations"]))]
+
+#p1_subspace = [True if i < len(policy1.observation_space["observations"]) else False for i in range(len(env.observation_space("player_1")["observations"]))]
+
+#p2_subspace = [True if i < len(policy2.observation_space["observations"]) else False for i in range(len(env.observation_space("player_2")["observations"]))]
 
 
 
@@ -78,11 +84,18 @@ for i in range(num_games):
             round_rewards.append(rewards)
             break
         else:
+            fixed_obs = obs["observations"][:-k]
             if agent == env.possible_agents[0]:
-                obs["observations"] = np.array([x for i, x in enumerate(obs["observations"]) if p1_subspace[i]])
+                k1 = k - (len(obs["observations"]) - obs_space_1)
+                action_history = obs["observations"][-k1:]
+
+                obs["observations"] = np.concatenate([fixed_obs, action_history])
                 act = policy1.compute_single_action(obs)[0]
             else:
-                obs["observations"] = np.array([x for i, x in enumerate(obs["observations"]) if p2_subspace[i]])
+                k2 = k - (len(obs["observations"]) - obs_space_2)
+                action_history = obs["observations"][-k2:]
+
+                obs["observations"] = np.concatenate([fixed_obs, action_history])
                 act = policy2.compute_single_action(obs)[0]
         env.step(act)
 env.close()
