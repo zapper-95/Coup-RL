@@ -331,7 +331,7 @@ class CoupEnv(AECEnv):
         else:
             self.state_space[f"{agent}_card_2_alive"] = False
             
-    def process_action(self, agent:str, other_agent:str, action:int) -> None:
+    def process_action(self, agent:str, other_agent:str, action:int, update_history=True) -> None:
         """Processes the action of a player, and updates the state space accordingly."""
         action_str = self.get_action_string(action)
         agent_past_action = self.action_history[-2]
@@ -386,7 +386,7 @@ class CoupEnv(AECEnv):
                     if self.get_action_string(agent_past_action) == "assassinate":
                         self.state_space[f"{agent}_coins"] += 3
 
-                    self.process_action(agent, other_agent, agent_past_action)
+                    self.process_action(agent, other_agent, agent_past_action, update_history=False)
                     self.loose_card(other_agent)
         elif action_str == "pass":
             pass        
@@ -395,8 +395,8 @@ class CoupEnv(AECEnv):
             action = ACTIONS.index("none")
 
 
-
-        self.update_action_history(action)
+        if update_history:
+            self.update_action_history(action)
 
                 
 
