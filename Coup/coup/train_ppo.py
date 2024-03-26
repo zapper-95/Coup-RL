@@ -33,9 +33,83 @@ from ray.rllib.evaluation.metrics import collect_episodes, summarize_episodes
 from ray.rllib.utils.test_utils import check_learning_achieved
 from ray.rllib.evaluation.worker_set import WorkerSet
 from ray.rllib.examples.policy.random_policy import RandomPolicy
+from gymnasium.spaces import Box
+import numpy as np
+import random
+import tree  # pip install dm_tree
+from typing import (
+    List,
+    Optional,
+    Union,
+)
+
+from ray.rllib.policy.policy import Policy
+from ray.rllib.policy.sample_batch import SampleBatch
+from ray.rllib.utils.annotations import override
+from ray.rllib.utils.typing import ModelWeights, TensorStructType, TensorType
+
+
+
 
 torch, nn = try_import_torch()
 
+class RandomPolicyActionMask(RandomPolicy):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+    
+    @override(RandomPolicy)
+    def compute_actions(
+        self,
+        obs_batch: Union[List[TensorStructType], TensorStructType],
+        state_batches: Optional[List[TensorType]] = None,
+        prev_action_batch: Union[List[TensorStructType], TensorStructType] = None,
+        prev_reward_batch: Union[List[TensorStructType], TensorStructType] = None,
+        **kwargs,
+    ):
+        # Alternatively, a numpy array would work here as well.
+        # e.g.: np.array([random.choice([0, 1])] * len(obs_batch))
+        obs_batch_size = len(tree.flatten(obs_batch)[0])
+        return (
+            [self.action_space_for_sampling.sample(obs_batch["action_mask"][0]) for i in range(obs_batch_size)],
+            [],
+            {},
+        )    
+
+def eval_policy_vs_random(player, eval_workers):
+    print(f"Evaluating for {player} against random:")
+    eval_workers._policy_class = {
+                "multiagent": {
+                    "policy_mapping_fn": (lambda agent_id, *args, **kwargs: player if agent_id == player else "random")
+                }
+            }
+
+    # Run evaluation episodes.
+    for _ in range(100):
+        # Running one episode per worker.
+        eval_workers.foreach_worker(func=lambda w: w.sample(), local_worker=False)
+
+    # Collect and summarize episodes into a metrics dict.
+    episodes = collect_episodes(workers=eval_workers, timeout_seconds=99999)
+    metrics = summarize_episodes(episodes)
+
+    # remove as always zero, because the game is zero sum
+    del metrics["hist_stats"]["episode_reward"]
+
+    winrate = [1 if x > 0 else 0 for x in metrics["hist_stats"]["policy_player_1_reward"]]
+    winrate = sum(winrate)/len(winrate)
+
+   
+    metrics["win_rate"] = winrate
+
+
+    strg_rewards = [x for x in metrics["hist_stats"]["policy_player_1_reward"] if x not in [2, 1, -1, 2]]
+    metrics["strg_rewards"] = strg_rewards
+
+
+
+
+    print(metrics)
+    return metrics
 
 
 def custom_eval_function(algorithm, eval_workers:WorkerSet):
@@ -48,30 +122,59 @@ def custom_eval_function(algorithm, eval_workers:WorkerSet):
     Returns:
         metrics: Evaluation metrics dict.
     """
-    print(type(eval_workers))
-    print(dir(eval_workers))
-    # eval_workers.foreach_worker(
 
-    #     func = lambda w: w.foreach_policy(
-    #         lambda 
-    #     )
+    print("policies:")
+
+    
+    # eval_workers.foreach_worker(
+    # func=lambda w: w.foreach_policy(
+    #     lambda policy, pid: print(pid, policy)
+    # )
 
     #     # func=lambda w: w.foreach_env(
     #     #     lambda env: env.set_corridor_length(4 if w.worker_index == 1 else 7)
     #     # )
     # )
+    
+    # Evaluate player 1 policy against random
+    metrics_1 = eval_policy_vs_random("player_1", eval_workers)
+    metrics_2 = eval_policy_vs_random("player_2", eval_workers)
 
-    # Run evaluation episodes.
-    for i in range(100):
-        print("Custom evaluation round", i)
-        # Running one episode per worker.
-        eval_workers.foreach_worker(func=lambda w: w.sample(), local_worker=False)
 
-    # Collect and summarize episodes into a metrics dict.
-    episodes = collect_episodes(workers=eval_workers, timeout_seconds=99999)
-    metrics = summarize_episodes(episodes)
-    print(metrics)
-    return metrics
+    return {"player_1": metrics_1, "player_2": metrics_2}
+    # eval_workers._policy_class = {
+    #             "multiagent": {
+    #                 "policy_mapping_fn": (lambda agent_id, *args, **kwargs: "player_1" if agent_id == "player_1" else "random")
+    #             }
+    #         }
+
+    # # Run evaluation episodes.
+    # for _ in range(100):
+    #     # Running one episode per worker.
+    #     eval_workers.foreach_worker(func=lambda w: w.sample(), local_worker=False)
+
+    # # Collect and summarize episodes into a metrics dict.
+    # episodes = collect_episodes(workers=eval_workers, timeout_seconds=99999)
+    # metrics = summarize_episodes(episodes)
+
+    # # remove as always zero, because the game is zero sum
+    # del metrics["hist_stats"]["episode_reward"]
+
+    # winrate = [1 if x > 0 else 0 for x in metrics["hist_stats"]["policy_player_1_reward"]]
+    # winrate = sum(winrate)/len(winrate)
+
+   
+    # metrics["win_rate"] = winrate
+
+
+    # strg_rewards = [x for x in metrics["hist_stats"]["policy_player_1_reward"] if x not in [2, 1, -1, 2]]
+    # metrics["strg_rewards"] = strg_rewards
+
+
+
+
+    # print(metrics)
+    # return metrics
 
 
 class ActionMaskModel(TorchModelV2, nn.Module):
@@ -131,7 +234,7 @@ if __name__ == "__main__":
             policies={
                 "player_1": (None, obs_space, act_space, {}),
                 "player_2": (None, obs_space, act_space, {}),
-                "random": (RandomPolicy, obs_space, act_space, {}),
+                "random": (RandomPolicyActionMask, obs_space, act_space, {}),
             },
             policy_mapping_fn=(lambda agent_id, *args, **kwargs: agent_id),
         )
