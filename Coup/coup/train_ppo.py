@@ -66,8 +66,6 @@ class RandomPolicyActionMask(RandomPolicy):
         prev_reward_batch: Union[List[TensorStructType], TensorStructType] = None,
         **kwargs,
     ):
-        # Alternatively, a numpy array would work here as well.
-        # e.g.: np.array([random.choice([0, 1])] * len(obs_batch))
         obs_batch_size = len(tree.flatten(obs_batch)[0])
         return (
             [self.action_space_for_sampling.sample(obs_batch["action_mask"][0]) for i in range(obs_batch_size)],
@@ -75,16 +73,13 @@ class RandomPolicyActionMask(RandomPolicy):
             {},
         )    
 
-def eval_policy_vs_random(player, eval_workers):
-    print(f"Evaluating for {player} against random:")
-    eval_workers._policy_class = {
-                "multiagent": {
-                    "policy_mapping_fn": (lambda agent_id, *args, **kwargs: player if agent_id == player else "random")
-                }
-            }
 
+
+
+def eval_policy_vs_random(eval_workers):
+    print(f"Evaluating against random:")
     # Run evaluation episodes.
-    for _ in range(100):
+    for i in range(100):
         # Running one episode per worker.
         eval_workers.foreach_worker(func=lambda w: w.sample(), local_worker=False)
 
@@ -95,14 +90,23 @@ def eval_policy_vs_random(player, eval_workers):
     # remove as always zero, because the game is zero sum
     del metrics["hist_stats"]["episode_reward"]
 
-    winrate = [1 if x > 0 else 0 for x in metrics["hist_stats"]["policy_player_1_reward"]]
-    winrate = sum(winrate)/len(winrate)
-
-   
-    metrics["win_rate"] = winrate
+    #print(metrics)
 
 
-    strg_rewards = [x for x in metrics["hist_stats"]["policy_player_1_reward"] if x not in [2, 1, -1, 2]]
+    player_1_winrate = [1 if x > 0 else 0 for x in metrics["hist_stats"][f"policy_player_1_reward"]]
+    player_1_winrate = sum(player_1_winrate)/len(player_1_winrate)
+
+
+    player_2_winrate = [1 if x > 0 else 0 for x in metrics["hist_stats"][f"policy_player_2_reward"]]
+    player_2_winrate = sum(player_2_winrate)/len(player_2_winrate)
+
+    
+
+
+    metrics["player_1_winrate"] = player_1_winrate
+    metrics["player_2_winrate"] = player_2_winrate
+
+    strg_rewards = [x for x in metrics["hist_stats"][f"policy_player_1_reward"] + metrics["hist_stats"][f"policy_player_2_reward"] if x not in [2, 1, -1, -2]]
     metrics["strg_rewards"] = strg_rewards
 
 
@@ -123,58 +127,10 @@ def custom_eval_function(algorithm, eval_workers:WorkerSet):
         metrics: Evaluation metrics dict.
     """
 
-    print("policies:")
+    metrics= eval_policy_vs_random(eval_workers)
 
-    
-    # eval_workers.foreach_worker(
-    # func=lambda w: w.foreach_policy(
-    #     lambda policy, pid: print(pid, policy)
-    # )
+    return metrics
 
-    #     # func=lambda w: w.foreach_env(
-    #     #     lambda env: env.set_corridor_length(4 if w.worker_index == 1 else 7)
-    #     # )
-    # )
-    
-    # Evaluate player 1 policy against random
-    metrics_1 = eval_policy_vs_random("player_1", eval_workers)
-    metrics_2 = eval_policy_vs_random("player_2", eval_workers)
-
-
-    return {"player_1": metrics_1, "player_2": metrics_2}
-    # eval_workers._policy_class = {
-    #             "multiagent": {
-    #                 "policy_mapping_fn": (lambda agent_id, *args, **kwargs: "player_1" if agent_id == "player_1" else "random")
-    #             }
-    #         }
-
-    # # Run evaluation episodes.
-    # for _ in range(100):
-    #     # Running one episode per worker.
-    #     eval_workers.foreach_worker(func=lambda w: w.sample(), local_worker=False)
-
-    # # Collect and summarize episodes into a metrics dict.
-    # episodes = collect_episodes(workers=eval_workers, timeout_seconds=99999)
-    # metrics = summarize_episodes(episodes)
-
-    # # remove as always zero, because the game is zero sum
-    # del metrics["hist_stats"]["episode_reward"]
-
-    # winrate = [1 if x > 0 else 0 for x in metrics["hist_stats"]["policy_player_1_reward"]]
-    # winrate = sum(winrate)/len(winrate)
-
-   
-    # metrics["win_rate"] = winrate
-
-
-    # strg_rewards = [x for x in metrics["hist_stats"]["policy_player_1_reward"] if x not in [2, 1, -1, 2]]
-    # metrics["strg_rewards"] = strg_rewards
-
-
-
-
-    # print(metrics)
-    # return metrics
 
 
 class ActionMaskModel(TorchModelV2, nn.Module):
@@ -206,6 +162,21 @@ class ActionMaskModel(TorchModelV2, nn.Module):
 
     def value_function(self):
         return self.fcnet.value_function()
+
+
+def policy_mapping_fn(agent_id, episode, worker, **kwargs):
+    """Function to allow evaluation, whether the policy plays as both player 1 and player 2."""
+    
+    # divide the evaluation randomly between each player
+
+    # ensure the same agent is used in a give episode
+    random.seed(episode.episode_id)
+
+    if random.randint(0,1) == 0:
+        return agent_id if agent_id == "player_1" else "random"
+    else:
+        return agent_id if agent_id == "player_2" else "random"
+
 
 
 def env_creator(render=None):
@@ -242,8 +213,6 @@ if __name__ == "__main__":
             model={"custom_model": "am_model"},
         )
         .environment(
-            # random env with 100 discrete actions and 5x [-1,1] observations
-            # some actions are declared invalid and lead to errors
             "Coup",
             env_config={
                 "action_space": act_space,
@@ -272,10 +241,12 @@ if __name__ == "__main__":
             evaluation_num_workers=2,
             # Enable evaluation, once per training iteration.
             evaluation_interval=1,
-            evaluation_duration=100,
+            #evaluation_duration=100,
             evaluation_config={
                 "multiagent": {
-                    "policy_mapping_fn": (lambda agent_id, *args, **kwargs: "player_1" if agent_id == "player_1" else "random")
+                    "policy_mapping_fn": policy_mapping_fn
+                    #"policy_mapping_fn": (lambda agent_id, *args, **kwargs: "player_1" if agent_id == "player_1" else "random")
+                    
                 }
             },       
             custom_evaluation_function=eval_fn
@@ -289,7 +260,7 @@ if __name__ == "__main__":
     tune.run(
         "PPO",
         name="PPO",
-        stop={"training_iteration": 10},
+        stop={"training_iteration": 40},
         checkpoint_config= CheckpointConfig(checkpoint_at_end=True),
         config=config.to_dict(),
         storage_path= os.path.normpath(os.path.abspath("./ray_results")),
