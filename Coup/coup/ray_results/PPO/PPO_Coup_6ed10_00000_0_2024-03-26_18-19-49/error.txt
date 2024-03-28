@@ -1,0 +1,64 @@
+Failure # 1 (occurred at 2024-03-26_18-20-46)
+[36mray::PPO.train()[39m (pid=4748, ip=127.0.0.1, actor_id=fc81f052782d418b72d1d2bc01000000, repr=PPO)
+  File "python\ray\_raylet.pyx", line 1889, in ray._raylet.execute_task
+  File "python\ray\_raylet.pyx", line 1830, in ray._raylet.execute_task.function_executor
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\_private\function_manager.py", line 724, in actor_method_executor
+    return method(__ray_actor, *args, **kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\tune\trainable\trainable.py", line 334, in train
+    raise skipped from exception_cause(skipped)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\tune\trainable\trainable.py", line 331, in train
+    result = self.step()
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\algorithms\algorithm.py", line 853, in step
+    results.update(self._run_one_evaluation(train_future=None))
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\algorithms\algorithm.py", line 3239, in _run_one_evaluation
+    eval_results = eval_func_to_use()
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\algorithms\algorithm.py", line 948, in evaluate
+    metrics = self.config.custom_evaluation_function(
+  File "C:\Users\josep\Documents\Coup-RL\Coup\coup\train_ppo.py", line 108, in custom_eval_function
+    eval_workers.foreach_worker(func=lambda w: w.sample(), local_worker=False)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\worker_set.py", line 771, in foreach_worker
+    handle_remote_call_result_errors(remote_results, self._ignore_worker_failures)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\worker_set.py", line 78, in handle_remote_call_result_errors
+    raise r.get()
+ray.exceptions.RayTaskError(IndexError): [36mray::RolloutWorker.apply()[39m (pid=4444, ip=127.0.0.1, actor_id=44f3cf6ba0d6a04809008f2701000000, repr=<ray.rllib.evaluation.rollout_worker.RolloutWorker object at 0x000002B7CE638AC0>)
+  File "python\ray\_raylet.pyx", line 1889, in ray._raylet.execute_task
+  File "python\ray\_raylet.pyx", line 1830, in ray._raylet.execute_task.function_executor
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\_private\function_manager.py", line 724, in actor_method_executor
+    return method(__ray_actor, *args, **kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\utils\actor_manager.py", line 189, in apply
+    raise e
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\utils\actor_manager.py", line 178, in apply
+    return func(self, *args, **kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\Coup\coup\train_ppo.py", line 108, in <lambda>
+    eval_workers.foreach_worker(func=lambda w: w.sample(), local_worker=False)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\rollout_worker.py", line 694, in sample
+    batches = [self.input_reader.next()]
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\sampler.py", line 91, in next
+    batches = [self.get_data()]
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\sampler.py", line 273, in get_data
+    item = next(self._env_runner)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\env_runner_v2.py", line 348, in run
+    outputs = self.step()
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\env_runner_v2.py", line 386, in step
+    eval_results = self._do_policy_eval(to_eval=to_eval)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\env_runner_v2.py", line 1086, in _do_policy_eval
+    eval_results[policy_id] = policy.compute_actions_from_input_dict(
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\policy\policy.py", line 621, in compute_actions_from_input_dict
+    return self.compute_actions(
+  File "C:\Users\josep\Documents\Coup-RL\Coup\coup\train_ppo.py", line 73, in compute_actions
+    [self.action_space_for_sampling.sample(tree.flatten(obs_batch)[0][i]["action_mask"]) for i in range(obs_batch_size)],
+  File "C:\Users\josep\Documents\Coup-RL\Coup\coup\train_ppo.py", line 73, in <listcomp>
+    [self.action_space_for_sampling.sample(tree.flatten(obs_batch)[0][i]["action_mask"]) for i in range(obs_batch_size)],
+IndexError: only integers, slices (`:`), ellipsis (`...`), numpy.newaxis (`None`) and integer or boolean arrays are valid indices

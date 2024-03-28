@@ -446,8 +446,8 @@ class CoupEnv(AECEnv):
         for agent in self.agents:
             self.terminations[agent] = True
 
-    def get_reward(self, agent:str, other_agent:str):
-        return (
+    def get_reward(self, agent:str, other_agent:str)->int:
+        return int(
                     int(self.state_space[f"{agent}_card_1_alive"]) 
                     + int(self.state_space[f"{agent}_card_2_alive"])
                     )- (
