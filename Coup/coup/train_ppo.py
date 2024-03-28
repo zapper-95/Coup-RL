@@ -211,6 +211,7 @@ if __name__ == "__main__":
         )
         .training(
             model={"custom_model": "am_model"},
+            #train_batch_size = 10_000,
         )
         .environment(
             "Coup",
@@ -235,7 +236,8 @@ if __name__ == "__main__":
         .framework("torch")
         .resources(
             # Use GPUs iff `RLLIB_NUM_GPUS` env var set to > 0.
-            num_gpus=int(os.environ.get("RLLIB_NUM_GPUS", "0"))
+            num_gpus = 1 if torch.cuda.is_available() else 0,
+            num_cpus_per_worker = 2,
         )
         .evaluation(
             evaluation_num_workers=2,
@@ -251,8 +253,9 @@ if __name__ == "__main__":
             },       
             custom_evaluation_function=eval_fn
         )
-
+        .rollouts(num_rollout_workers=3)
     )
+    
     ray.init(ignore_reinit_error=True)
 
     os.makedirs("ray_results", exist_ok=True)
@@ -261,7 +264,7 @@ if __name__ == "__main__":
         "PPO",
         name="PPO",
         stop={"training_iteration": 40},
-        checkpoint_config= CheckpointConfig(checkpoint_at_end=True),
+        checkpoint_config= CheckpointConfig(checkpoint_at_end=True, checkpoint_frequency=1),
         config=config.to_dict(),
         storage_path= os.path.normpath(os.path.abspath("./ray_results")),
     )
