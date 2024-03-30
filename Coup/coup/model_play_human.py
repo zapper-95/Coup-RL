@@ -13,7 +13,7 @@ num_games = 10
 checkpoint_path = get_last_agent_path()
 
 def env_creator():
-    env = coup_v2.env()
+    env = coup_v2.env(render_mode="human", k_actions=3)
     return env
 
 
@@ -23,7 +23,7 @@ PPO_agent = Algorithm.from_checkpoint(checkpoint_path)
 
 
 
-env = coup_v2.env(render_mode="human")
+env = env_creator()
 scores = {agent: 0 for agent in env.possible_agents}
 total_rewards = {agent: 0 for agent in env.possible_agents}
 round_rewards = []
