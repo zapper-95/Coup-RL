@@ -21,8 +21,8 @@ def env_creator():
 ModelCatalog.register_custom_model("am_model", ActionMaskModel)
 register_env("Coup", lambda config: PettingZooEnv(env_creator()))
 
-policy1 = Algorithm.from_checkpoint(checkpoint_path).get_policy(policy_id="player_1")
-policy2 = Algorithm.from_checkpoint(checkpoint_path).get_policy(policy_id="player_2")
+policy = Algorithm.from_checkpoint(checkpoint_path).get_policy(policy_id="policy")
+#policy2 = Algorithm.from_checkpoint(checkpoint_path).get_policy(policy_id="player_2")
 
 
 
@@ -60,7 +60,7 @@ for i in range(num_games):
                 act = env.action_space(agent).sample(action_mask)
             else:
                 #act = env.action_space(agent).sample(action_mask)
-                act = policy2.compute_single_action(obs)[0]
+                act = policy.compute_single_action(obs)[0]
         env.step(act)
 env.close()
 
