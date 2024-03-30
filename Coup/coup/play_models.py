@@ -1,4 +1,4 @@
-import coup_v1
+import coup_v2
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.env.wrappers.pettingzoo_env import PettingZooEnv
 from ray.tune.registry import register_env
@@ -13,26 +13,26 @@ num_games = 1000
 
 model_1_path = get_last_agent_path()
 model_2_path = get_penultimate_agent_path()
-
+#model_2_path = get_last_agent_path()
 
 def env_creator():
-    env = coup_v1.env()
+    env = coup_v2.env()
     return env
 
 
 ModelCatalog.register_custom_model("am_model", ActionMaskModel)
 register_env("Coup", lambda config: PettingZooEnv(env_creator()))
 
-policy1 = Algorithm.from_checkpoint(model_1_path).get_policy(policy_id="player_1")
+policy1 = Algorithm.from_checkpoint(model_1_path).get_policy(policy_id="policy")
 policy2 = Algorithm.from_checkpoint(model_2_path).get_policy(policy_id="player_2")
 
 obs_space_1 = len(policy1.observation_space["observations"])
 obs_space_2 = len(policy2.observation_space["observations"])
 
 # k past actions is equal the max observation space minus that 
-k = max(obs_space_1, obs_space_2) + 2 - len(coup_v1.env(k_actions=2).observation_space("player_1")["observations"])
+k = max(obs_space_1, obs_space_2) + 2 - len(coup_v2.env(k_actions=2).observation_space("player_1")["observations"])
 
-env = coup_v1.env(render_mode=None, k_actions=k)
+env = coup_v2.env(render_mode=None, k_actions=k)
 scores = {agent: 0 for agent in env.possible_agents}
 total_rewards = {agent: 0 for agent in env.possible_agents}
 round_rewards = []

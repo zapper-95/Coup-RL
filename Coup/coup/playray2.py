@@ -1,4 +1,4 @@
-import coup_v1
+import coup_v2
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.env.wrappers.pettingzoo_env import PettingZooEnv
 from ray.tune.registry import register_env
@@ -13,7 +13,7 @@ num_games = 10
 checkpoint_path = "C:/Users/josep/ray_results\PPO\PPO_Coup_0455a_00000_0_2024-03-22_12-23-40\checkpoint_000000"
 
 def env_creator():
-    env = coup_v1.env()
+    env = coup_v2.env()
     return env
 
 
@@ -23,7 +23,7 @@ PPO_agent = Algorithm.from_checkpoint(checkpoint_path)
 
 
 
-env = coup_v1.env(render_mode="human")
+env = coup_v2.env(render_mode="human")
 scores = {agent: 0 for agent in env.possible_agents}
 total_rewards = {agent: 0 for agent in env.possible_agents}
 round_rewards = []

@@ -1,8 +1,8 @@
-import coup_v1
+import coup_v2
 import numpy as np
 
 
-env = coup_v1.env(render_mode="human")
+env = coup_v2.env(render_mode="human")
 env.reset()
 env.render(display_action=False)
 for agent in env.agent_iter():
@@ -10,8 +10,8 @@ for agent in env.agent_iter():
     observation, reward, termination, truncation, info = env.last()
     action_mask = observation["action_mask"]
     print(observation)
-    #print(f"Player 1 reward: {env.rewards['player_1']}")
-    #print(f"Player 2 reward: {env.rewards['player_2']}")
+    print(f"Player 1 reward: {env.rewards['player_1']}")
+    print(f"Player 2 reward: {env.rewards['player_2']}")
 
         
     if termination or truncation:

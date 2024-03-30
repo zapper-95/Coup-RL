@@ -93,21 +93,13 @@ def eval_policy_vs_random(eval_workers):
     #print(metrics)
 
 
-    player_1_winrate = [1 if x > 0 else 0 for x in metrics["hist_stats"][f"policy_player_1_reward"]]
-    player_1_winrate = sum(player_1_winrate)/len(player_1_winrate)
-
-
-    player_2_winrate = [1 if x > 0 else 0 for x in metrics["hist_stats"][f"policy_player_2_reward"]]
-    player_2_winrate = sum(player_2_winrate)/len(player_2_winrate)
+    policy_winrate = [1 if x > 0 else 0 for x in metrics["hist_stats"][f"policy_policy_reward"]]
+    policy_winrate = sum(policy_winrate)/len(policy_winrate)
 
     
 
 
-    metrics["player_1_winrate"] = player_1_winrate
-    metrics["player_2_winrate"] = player_2_winrate
-
-    strg_rewards = [x for x in metrics["hist_stats"][f"policy_player_1_reward"] + metrics["hist_stats"][f"policy_player_2_reward"] if x not in [2, 1, -1, -2]]
-    metrics["strg_rewards"] = strg_rewards
+    metrics["policy_winrate"] = policy_winrate
 
 
 
@@ -173,9 +165,9 @@ def policy_mapping_fn(agent_id, episode, worker, **kwargs):
     random.seed(episode.episode_id)
 
     if random.randint(0,1) == 0:
-        return agent_id if agent_id == "player_1" else "random"
+        return "policy" if agent_id == "player_1" else "random"
     else:
-        return agent_id if agent_id == "player_2" else "random"
+        return "policy" if agent_id == "player_2" else "random"
 
 
 
@@ -203,11 +195,10 @@ if __name__ == "__main__":
         ppo.PPOConfig()
         .multi_agent(
             policies={
-                "player_1": (None, obs_space, act_space, {}),
-                "player_2": (None, obs_space, act_space, {}),
+                "policy": (None, obs_space, act_space, {}),
                 "random": (RandomPolicyActionMask, obs_space, act_space, {}),
             },
-            policy_mapping_fn=(lambda agent_id, *args, **kwargs: agent_id),
+            policy_mapping_fn=(lambda agent_id, *args, **kwargs: "policy"),
         )
         .training(
             model={"custom_model": "am_model"},

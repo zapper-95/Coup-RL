@@ -1,4 +1,4 @@
-import coup_v1
+import coup_v2
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.env.wrappers.pettingzoo_env import PettingZooEnv
 from ray.tune.registry import register_env
@@ -14,7 +14,7 @@ num_games = 1000
 checkpoint_path = get_last_agent_path()
 
 def env_creator():
-    env = coup_v1.env(k_actions=10)
+    env = coup_v2.env(k_actions=10)
     return env
 
 

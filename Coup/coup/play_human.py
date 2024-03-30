@@ -1,4 +1,4 @@
-import coup_v1
+import coup_v2
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.env.wrappers.pettingzoo_env import PettingZooEnv
 from ray.tune.registry import register_env
@@ -13,7 +13,7 @@ num_games = 10
 checkpoint_path = get_last_agent_path()
 
 def env_creator():
-    env = coup_v1.env()
+    env = coup_v2.env()
     return env
 
 
@@ -23,7 +23,7 @@ PPO_agent = Algorithm.from_checkpoint(checkpoint_path)
 
 
 
-env = coup_v1.env(render_mode="human")
+env = coup_v2.env(render_mode="human")
 scores = {agent: 0 for agent in env.possible_agents}
 total_rewards = {agent: 0 for agent in env.possible_agents}
 round_rewards = []
@@ -65,13 +65,13 @@ while True:
                 act = int(input())
             else:
 
-                policy = PPO_agent.get_policy(policy_id="player_2")
+                policy = PPO_agent.get_policy(policy_id="policy")
 
                 act, state, extra_fetches = policy.compute_single_action(obs)
 
 
                 # get the model that processes observations
-                model = PPO_agent.get_policy("player_2").model
+                model = PPO_agent.get_policy("policy").model
 
                 # get the logits of the action distribution
                 dist_inputs = extra_fetches['action_dist_inputs']
