@@ -232,7 +232,7 @@ class CoupEnv(AECEnv):
             ["kill_card_2", "pass"],
             ["counteract", "pass"],
             ["pass", "kill_card_1"],
-            ["pass", "kill_card_2"]
+            ["pass", "kill_card_2"],
         ]
         ):
             legal_moves = normal_actions
@@ -291,7 +291,7 @@ class CoupEnv(AECEnv):
                 # if you won the challenge, pass so the other player looses a card
                 legal_moves = [self.get_action_id("pass")]
             
-        elif [player_past_action_str, other_action_str] in [["assassinate", "kill_card_1"], ["assassinate", "kill_card_2"]]:
+        elif [player_past_action_str, other_action_str] in [["assassinate", "kill_card_1"], ["assassinate", "kill_card_2"], ["coup", "kill_card_1"], ["coup", "kill_card_2"]]:
             # if you assassinated the other player, and they lost a card, you pass, so it becomes their turn
             legal_moves = [self.get_action_id("pass")]
 
