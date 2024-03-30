@@ -172,10 +172,7 @@ def policy_mapping_fn(agent_id, episode, worker, **kwargs):
 
 
 def env_creator(render=None):
-    if render:
-        env = coup_v2.env(render_mode="human")
-    else:
-        env = coup_v2.env()
+    env = coup_v2.env(k_actions=3)
     return env
 
 
@@ -203,6 +200,9 @@ if __name__ == "__main__":
         .training(
             model={"custom_model": "am_model"},
             train_batch_size = 10_000,
+            entropy_coeff=0.0010,
+            lr=0.0001,
+            sgd_minibatch_size=512
         )
         .environment(
             "Coup",
@@ -255,7 +255,7 @@ if __name__ == "__main__":
         "PPO",
         name="PPO",
         stop={"training_iteration": 40},
-        checkpoint_config= CheckpointConfig(checkpoint_at_end=True, checkpoint_frequency=1),
+        checkpoint_config= CheckpointConfig(checkpoint_at_end=True, checkpoint_frequency=10),
         config=config.to_dict(),
         storage_path= os.path.normpath(os.path.abspath("./ray_results")),
     )
