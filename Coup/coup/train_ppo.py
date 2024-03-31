@@ -9,7 +9,7 @@ https://github.com/ray-project/ray/blob/master/rllib/examples/custom_eval.py
 
 import argparse
 import os
-import coup_v1
+import coup_v2
 from gymnasium.spaces import Box, Discrete, MultiDiscrete
 import ray
 from ray.rllib.algorithms import ppo
@@ -181,9 +181,9 @@ def policy_mapping_fn(agent_id, episode, worker, **kwargs):
 
 def env_creator(render=None):
     if render:
-        env = coup_v1.env(render_mode="human")
+        env = coup_v2.env(render_mode="human")
     else:
-        env = coup_v1.env()
+        env = coup_v2.env()
     return env
 
 
@@ -211,7 +211,7 @@ if __name__ == "__main__":
         )
         .training(
             model={"custom_model": "am_model"},
-            #train_batch_size = 10_000,
+            train_batch_size = 10_000,
         )
         .environment(
             "Coup",

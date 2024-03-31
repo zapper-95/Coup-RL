@@ -18,7 +18,7 @@ from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
 from sb3_contrib.common.wrappers import ActionMasker
 
 import pettingzoo.utils
-import coup_v1
+import coup_v2
 
 
 class SB3ActionMaskWrapper(pettingzoo.utils.BaseWrapper):
@@ -344,7 +344,7 @@ if __name__ == "__main__":
 
     
     
-    env_fn = coup_v1
+    env_fn = coup_v2
 
     
     # create the parser

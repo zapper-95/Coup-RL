@@ -1,10 +1,10 @@
-import coup_v1
+import coup_v2
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.env.wrappers.pettingzoo_env import PettingZooEnv
 from ray.tune.registry import register_env
 from ray.rllib.models import ModelCatalog
 from train_ppo import ActionMaskModel
-from utils import get_last_agent_path, get_penultimate_agent_path
+from utils import get_last_agent_path, get_penultimate_agent_path, get_nth_latest_model
 from ray.rllib.examples.policy.random_policy import RandomPolicy
 
 num_games = 1000
@@ -12,17 +12,18 @@ num_games = 1000
 
 
 checkpoint_path = get_last_agent_path()
+checkpoint_path = get_nth_latest_model(4)
 
 def env_creator():
-    env = coup_v1.env(k_actions=10)
+    env = coup_v2.env()
     return env
 
 
 ModelCatalog.register_custom_model("am_model", ActionMaskModel)
 register_env("Coup", lambda config: PettingZooEnv(env_creator()))
 
-policy1 = Algorithm.from_checkpoint(checkpoint_path).get_policy(policy_id="player_1")
-policy2 = Algorithm.from_checkpoint(checkpoint_path).get_policy(policy_id="player_2")
+policy = Algorithm.from_checkpoint(checkpoint_path).get_policy(policy_id="policy")
+#policy2 = Algorithm.from_checkpoint(checkpoint_path).get_policy(policy_id="player_2")
 
 
 
@@ -60,7 +61,7 @@ for i in range(num_games):
                 act = env.action_space(agent).sample(action_mask)
             else:
                 #act = env.action_space(agent).sample(action_mask)
-                act = policy2.compute_single_action(obs)[0]
+                act = policy.compute_single_action(obs)[0]
         env.step(act)
 env.close()
 

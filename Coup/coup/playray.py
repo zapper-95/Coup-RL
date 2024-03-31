@@ -14,7 +14,7 @@ from ray.rllib.models import ModelCatalog
 from ray.tune.registry import register_env
 from ray5 import TorchMaskedActions
 
-import coup_v1
+import coup_v2
 
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 
@@ -42,12 +42,12 @@ ModelCatalog.register_custom_model("pa_model", TorchMaskedActions)
 
 
 def env_creator():
-    env = coup_v1.env()
+    env = coup_v2.env()
     return env
 
 
 env = env_creator()
-env_name = "coup_v1"
+env_name = "coup_v2"
 register_env(env_name, lambda config: PettingZooEnv(env_creator()))
 
 ray.init()
