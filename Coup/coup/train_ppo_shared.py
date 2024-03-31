@@ -132,9 +132,10 @@ class ActionMaskModel(TorchModelV2, nn.Module):
         TorchModelV2.__init__(self, obs_space, action_space, num_outputs, model_config, name)
         nn.Module.__init__(self)
         
+        print(model_config["fcnet_hiddens"])
+
         self.action_space = action_space
         self.obs_space = obs_space
-
         self.fcnet = TorchFC(obs_space.spaces['observations'], action_space, num_outputs, model_config, name)
 
     def forward(self, input_dict, state, seq_lens):
@@ -172,7 +173,7 @@ def policy_mapping_fn(agent_id, episode, worker, **kwargs):
 
 
 def env_creator(render=None):
-    env = coup_v2.env(k_actions=3)
+    env = coup_v2.env(k_actions=10)
     return env
 
 
@@ -199,21 +200,16 @@ if __name__ == "__main__":
         )
         .training(
             model={"custom_model": "am_model"},
-            train_batch_size = 10_000,
-            entropy_coeff=0.0010,
-            lr=0.0001,
-            sgd_minibatch_size=512
+            train_batch_size = 20_000,
+            entropy_coeff=0.001,
+            #entropy_coeff = 0.01,
+            lr=0.001,
+            sgd_minibatch_size=2048,
         )
         .environment(
             "Coup",
             env_config={
                 "action_space": act_space,
-                #"action_space": Discrete(11),
-                # This is not going to be the observation space that our RLModule sees.
-                # It's only the configuration provided to the environment.
-                # The environment will instead create Dict observations with
-                # the keys "observations" and "action_mask".
-                #"observations_space": MultiDiscrete([5, 5, 2, 2, 14, 6, 6, 14, 11, 11]),
                 "observation_space": obs_space["observations"]
                 
             },
@@ -254,7 +250,7 @@ if __name__ == "__main__":
     tune.run(
         "PPO",
         name="PPO",
-        stop={"training_iteration": 40},
+        stop={"training_iteration": 20},
         checkpoint_config= CheckpointConfig(checkpoint_at_end=True, checkpoint_frequency=10),
         config=config.to_dict(),
         storage_path= os.path.normpath(os.path.abspath("./ray_results")),
