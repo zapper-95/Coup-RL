@@ -4,96 +4,146 @@ from ray.rllib.env.wrappers.pettingzoo_env import PettingZooEnv
 from ray.tune.registry import register_env
 from ray.rllib.models import ModelCatalog
 from train_ppo import ActionMaskModel
-from utils import get_last_agent_path
-
-num_games = 10
-
+from utils import get_last_agent_path, get_nth_latest_model
+import argparse
 
 
-checkpoint_path = get_last_agent_path()
 
-def env_creator():
-    env = coup_v2.env(render_mode="human", k_actions=3)
+
+
+def env_creator(render_mode=None):
+    env = coup_v2.env(render_mode=render_mode)
     return env
 
 
-ModelCatalog.register_custom_model("am_model", ActionMaskModel)
-register_env("Coup", lambda config: PettingZooEnv(env_creator()))
-PPO_agent = Algorithm.from_checkpoint(checkpoint_path)
 
-
-
-env = env_creator()
-scores = {agent: 0 for agent in env.possible_agents}
-total_rewards = {agent: 0 for agent in env.possible_agents}
-round_rewards = []
-
-while True:
-    print("----- New Game -----")
-    print("Player 1: Human")
-    print("Player 2: AI")
-    print("-------------------")
-    env.reset()
-
-    env.action_space(env.possible_agents[0])
+def print_obs(env, obs):
+    print("Card 1: ", env.get_card(obs[0]))
+    print("Card 2: ", env.get_card(obs[1]))
+    print("Card 1 Alive: ", obs[2])
+    print("Card 2 Alive: ", obs[3])
+    print("Coins: ", obs[4])
     
-    env.render(display_action=False)
-    rewards = {agent: 0 for agent in env.possible_agents}
+    print()
+    if obs[5] == 5:
+        print(f"Agents Card 1: (Hidden)")
+    else:
+        print(f"Agents Card 1: {env.get_card(obs[5])}")
 
-    for agent in env.agent_iter():
-        obs, reward, termination, truncation, info = env.last()
+    if obs[6] == 5:
+        print(f"Agents Card 2: (Hidden)")
+    else:
+        print(f"Agents Card 2: {env.get_card(obs[6])}")
 
-        # Separate observation and action mask
-        observation, action_mask = obs.values()
+    print(f"Agents Coins: {obs[7]}")
+    print("-------------------")
 
-        for a in env.agents:
-            rewards[a] += env.rewards[a]             
-        if termination or truncation:
-            winner = max(env.rewards, key=env.rewards.get)
-            scores[winner] += 1 # only tracks the largest reward (winner of game)
-            # Also track negative and positive rewards (penalizes illegal moves)
-            for a in env.possible_agents:
-                total_rewards[a] += rewards[a]
-            # List of rewards by round, for reference
-            round_rewards.append(rewards)
-            break
-        else:
-            if agent == env.possible_agents[0]:
-                for i in range(len(action_mask)):
-                    if action_mask[i] == 1:
-                        print(f"Action {i}: {env.get_action_string(i)}")
-                act = int(input())
+
+
+
+if __name__ == "__main__":
+
+    checkpoint_path = get_nth_latest_model(2)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--render_mode", type=str, default=None, help="Render mode for the environment")
+    args = parser.parse_args()
+
+    render_mode = args.render_mode
+
+    if render_mode:
+        env = env_creator(render_mode)
+    else:
+        env = env_creator()
+
+    ModelCatalog.register_custom_model("am_model", ActionMaskModel)
+    register_env("Coup", lambda config: PettingZooEnv(env_creator()))
+    PPO_agent = Algorithm.from_checkpoint(checkpoint_path)
+
+
+
+    scores = {agent: 0 for agent in env.possible_agents}
+    total_rewards = {agent: 0 for agent in env.possible_agents}
+    round_rewards = []
+
+    while True:
+        print("----- New Game -----")
+        print("Player 1: Human")
+        print("Player 2: AI")
+        print("-------------------")
+        env.reset()
+
+        env.action_space(env.possible_agents[0])
+        
+        if render_mode:
+            env.render(display_action=False)
+
+        rewards = {agent: 0 for agent in env.possible_agents}
+
+        for agent in env.agent_iter():
+            obs, reward, termination, truncation, info = env.last()
+
+            # Separate observation and action mask
+            observation, action_mask = obs.values()
+
+
+
+
+            for a in env.agents:
+                rewards[a] += env.rewards[a]             
+            if termination or truncation:
+                winner = max(env.rewards, key=env.rewards.get)
+                scores[winner] += 1 # only tracks the largest reward (winner of game)
+                # Also track negative and positive rewards (penalizes illegal moves)
+                for a in env.possible_agents:
+                    total_rewards[a] += rewards[a]
+                # List of rewards by round, for reference
+                round_rewards.append(rewards)
+                break
             else:
+                if agent == env.possible_agents[0]:
+                    if not render_mode:
+                        print_obs(env, observation)
 
-                policy = PPO_agent.get_policy(policy_id="policy")
+                    for i in range(len(action_mask)):
+                        if action_mask[i] == 1:
+                            print(f"Action {i}: {env.get_action_string(i)}")
+                    act = int(input())
+                else:
 
-                act, state, extra_fetches = policy.compute_single_action(obs)
+                    policy = PPO_agent.get_policy(policy_id="policy")
+
+                    act, state, extra_fetches = policy.compute_single_action(obs)
+
+                    if not render_mode == None:
+                        # get the model that processes observations
+                        model = PPO_agent.get_policy("policy").model
+
+                        # get the logits of the action distribution
+                        dist_inputs = extra_fetches['action_dist_inputs']
+
+                        # get the action distribution class
+                        dist_class = policy.dist_class
+
+                        # create the action distribution using the logits
+                        action_dist = dist_class(dist_inputs, model)
 
 
-                # get the model that processes observations
-                model = PPO_agent.get_policy("policy").model
+                        # print value estimate of the state
+                        print(f"Predicted value: {extra_fetches['vf_preds']} \n")
 
-                # get the logits of the action distribution
-                dist_inputs = extra_fetches['action_dist_inputs']
+                        # print the action probabilities
+                        print("Probabilities:")
+                        probs = action_dist.dist.probs
+                        probs = ["{:.2f}".format(value) for value in probs.tolist()]
+                        
+                        for i in range(len(action_mask)):
+                            if action_mask[i] == 1:
+                                print(f"{env.get_action_string(i)} : {probs[i]}")
 
-                # get the action distribution class
-                dist_class = policy.dist_class
-
-                # create the action distribution using the logits
-                action_dist = dist_class(dist_inputs, model)
-
-
-                # print value estimate of the state
-                print(f"Predicted value: {extra_fetches['vf_preds']} \n")
-
-                # print the action probabilities
-                print("Probabilities:")
-                probs = action_dist.dist.probs
-                probs = ["{:.2f}".format(value) for value in probs.tolist()]
-                
-                for i in range(len(action_mask)):
-                    if action_mask[i] == 1:
-                        print(f"{env.get_action_string(i)} : {probs[i]}")
-
-        env.step(act)
-env.close()
+            if not render_mode:
+                print("-------------------")
+                print("ACTION: ", env.get_action_string(act))
+                print("-------------------")  
+            env.step(act)
+    env.close()

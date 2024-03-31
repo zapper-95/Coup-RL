@@ -4,15 +4,15 @@ from ray.rllib.env.wrappers.pettingzoo_env import PettingZooEnv
 from ray.tune.registry import register_env
 from ray.rllib.models import ModelCatalog
 from train_ppo import ActionMaskModel
-from utils import get_last_agent_path, get_penultimate_agent_path
+from utils import get_last_agent_path, get_penultimate_agent_path, get_nth_latest_model
 import ray
 import numpy as np
 
 num_games = 1000
 
 
-model_1_path = get_last_agent_path()
-model_2_path = get_penultimate_agent_path()
+model_1_path = get_nth_latest_model(exp_n=1)
+model_2_path = get_nth_latest_model(exp_n=2)
 #model_2_path = get_last_agent_path()
 
 def env_creator():
@@ -24,13 +24,13 @@ ModelCatalog.register_custom_model("am_model", ActionMaskModel)
 register_env("Coup", lambda config: PettingZooEnv(env_creator()))
 
 policy1 = Algorithm.from_checkpoint(model_1_path).get_policy(policy_id="policy")
-policy2 = Algorithm.from_checkpoint(model_2_path).get_policy(policy_id="player_2")
+policy2 = Algorithm.from_checkpoint(model_2_path).get_policy(policy_id="policy")
 
 obs_space_1 = len(policy1.observation_space["observations"])
 obs_space_2 = len(policy2.observation_space["observations"])
 
 # k past actions is equal the max observation space minus that 
-k = max(obs_space_1, obs_space_2) + 2 - len(coup_v2.env(k_actions=2).observation_space("player_1")["observations"])
+k = max(obs_space_1, obs_space_2) + coup_v2.env().k_actions - len(coup_v2.env().observation_space("player_1")["observations"])
 
 env = coup_v2.env(render_mode=None, k_actions=k)
 scores = {agent: 0 for agent in env.possible_agents}
@@ -72,10 +72,8 @@ for i in range(num_games):
         if termination or truncation:
             winner = max(env.rewards, key=env.rewards.get)
             scores[winner] += 1 # only tracks the largest reward (winner of game)
-            # Also track negative and positive rewards (penalizes illegal moves)
             for a in env.possible_agents:
                 total_rewards[a] += rewards[a]
-            # List of rewards by round, for reference
             round_rewards.append(rewards)
             break
         else:

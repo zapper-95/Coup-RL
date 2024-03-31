@@ -4,7 +4,7 @@ from ray.rllib.env.wrappers.pettingzoo_env import PettingZooEnv
 from ray.tune.registry import register_env
 from ray.rllib.models import ModelCatalog
 from train_ppo import ActionMaskModel
-from utils import get_last_agent_path, get_penultimate_agent_path
+from utils import get_last_agent_path, get_penultimate_agent_path, get_nth_latest_model
 from ray.rllib.examples.policy.random_policy import RandomPolicy
 
 num_games = 1000
@@ -12,9 +12,10 @@ num_games = 1000
 
 
 checkpoint_path = get_last_agent_path()
+checkpoint_path = get_nth_latest_model(4)
 
 def env_creator():
-    env = coup_v2.env(k_actions=10)
+    env = coup_v2.env()
     return env
 
 
