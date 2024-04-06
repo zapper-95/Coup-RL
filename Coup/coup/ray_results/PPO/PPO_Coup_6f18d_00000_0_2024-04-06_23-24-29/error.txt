@@ -1,0 +1,73 @@
+Failure # 1 (occurred at 2024-04-06_23-24-44)
+The actor died because of an error raised in its creation task, [36mray::PPO.__init__()[39m (pid=28392, ip=127.0.0.1, actor_id=5cc63bda02a216a91f840a4d01000000, repr=PPO)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\worker_set.py", line 229, in _setup
+    self.add_workers(
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\worker_set.py", line 682, in add_workers
+    raise result.get()
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\utils\actor_manager.py", line 497, in _fetch_result
+    result = ray.get(r)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\_private\auto_init_hook.py", line 21, in auto_init_wrapper
+    return fn(*args, **kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\_private\client_mode_hook.py", line 103, in wrapper
+    return func(*args, **kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\_private\worker.py", line 2667, in get
+    values, debugger_breakpoint = worker.get_objects(object_refs, timeout=timeout)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\_private\worker.py", line 866, in get_objects
+    raise value
+ray.exceptions.RayActorError: The actor died because of an error raised in its creation task, [36mray::RolloutWorker.__init__()[39m (pid=21312, ip=127.0.0.1, actor_id=e3d03d38a1b9b3011c28fcc601000000, repr=<ray.rllib.evaluation.rollout_worker.RolloutWorker object at 0x00000186F4DDF1F0>)
+  File "python\ray\_raylet.pyx", line 1889, in ray._raylet.execute_task
+  File "python\ray\_raylet.pyx", line 1830, in ray._raylet.execute_task.function_executor
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\_private\function_manager.py", line 724, in actor_method_executor
+    return method(__ray_actor, *args, **kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\rollout_worker.py", line 535, in __init__
+    self._update_policy_map(policy_dict=self.policy_dict)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\rollout_worker.py", line 1743, in _update_policy_map
+    self._build_policy_map(
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\rollout_worker.py", line 1854, in _build_policy_map
+    new_policy = create_policy_for_framework(
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\utils\policy.py", line 141, in create_policy_for_framework
+    return policy_class(observation_space, action_space, merged_config)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\algorithms\ppo\ppo_torch_policy.py", line 64, in __init__
+    self._initialize_loss_from_dummy_batch()
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\policy\policy.py", line 1396, in _initialize_loss_from_dummy_batch
+    actions, state_outs, extra_outs = self.compute_actions_from_input_dict(
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\policy\torch_policy_v2.py", line 557, in compute_actions_from_input_dict
+    return self._compute_action_helper(
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\utils\threading.py", line 24, in wrapper
+    return func(self, *a, **k)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\policy\torch_policy_v2.py", line 1260, in _compute_action_helper
+    dist_inputs, state_out = self.model(input_dict, state_batches, seq_lens)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\models\modelv2.py", line 255, in __call__
+    res = self.forward(restored, state or [], seq_lens)
+  File "C:\Users\josep\Documents\Coup-RL\Coup\coup\train_ppo_shared.py", line 229, in forward
+    if action_mask:
+UnboundLocalError: local variable 'action_mask' referenced before assignment
+
+During handling of the above exception, another exception occurred:
+
+[36mray::PPO.__init__()[39m (pid=28392, ip=127.0.0.1, actor_id=5cc63bda02a216a91f840a4d01000000, repr=PPO)
+  File "python\ray\_raylet.pyx", line 1883, in ray._raylet.execute_task
+  File "python\ray\_raylet.pyx", line 1984, in ray._raylet.execute_task
+  File "python\ray\_raylet.pyx", line 1889, in ray._raylet.execute_task
+  File "python\ray\_raylet.pyx", line 1830, in ray._raylet.execute_task.function_executor
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\_private\function_manager.py", line 724, in actor_method_executor
+    return method(__ray_actor, *args, **kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\algorithms\algorithm.py", line 533, in __init__
+    super().__init__(
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\tune\trainable\trainable.py", line 161, in __init__
+    self.setup(copy.deepcopy(self.config))
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\algorithms\algorithm.py", line 631, in setup
+    self.workers = WorkerSet(
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\worker_set.py", line 181, in __init__
+    raise e.args[0].args[2]
+UnboundLocalError: local variable 'action_mask' referenced before assignment

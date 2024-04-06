@@ -33,13 +33,16 @@ from ray.rllib.evaluation.metrics import collect_episodes, summarize_episodes
 from ray.rllib.utils.test_utils import check_learning_achieved
 from ray.rllib.evaluation.worker_set import WorkerSet
 from ray.rllib.examples.policy.random_policy import RandomPolicy
+from ray.rllib.models.torch.recurrent_net import RecurrentNetwork as TorchRNN
 from gymnasium.spaces import Box
 import numpy as np
 import random
 import tree  # pip install dm_tree
 from typing import (
+    Dict,
     List,
     Optional,
+    Tuple,
     Union,
 )
 
@@ -47,8 +50,8 @@ from ray.rllib.policy.policy import Policy
 from ray.rllib.policy.sample_batch import SampleBatch
 from ray.rllib.utils.annotations import override
 from ray.rllib.utils.typing import ModelWeights, TensorStructType, TensorType
-
-
+from ray.rllib.models.modelv2 import ModelV2
+from ray.rllib.policy.rnn_sequencing import add_time_dimension
 
 
 torch, nn = try_import_torch()
@@ -109,15 +112,6 @@ def eval_policy_vs_random(eval_workers):
 
 
 def custom_eval_function(algorithm, eval_workers:WorkerSet):
-    """Example of a custom evaluation function.
-
-    Args:
-        algorithm: Algorithm class to evaluate.
-        eval_workers: Evaluation WorkerSet.
-
-    Returns:
-        metrics: Evaluation metrics dict.
-    """
 
     metrics= eval_policy_vs_random(eval_workers)
 
@@ -157,6 +151,107 @@ class ActionMaskModel(TorchModelV2, nn.Module):
         return self.fcnet.value_function()
 
 
+
+
+class TorchRNNModel(TorchRNN, nn.Module):
+    def __init__(self,
+                 obs_space,
+                 action_space,
+                 num_outputs,
+                 model_config,
+                 name,
+                 fc_size=64,
+                 lstm_state_size=256):
+        nn.Module.__init__(self)
+        print("obs_space", obs_space.spaces["observations"])
+        print("shape ", obs_space.spaces["observations"].shape[0])
+        super().__init__(obs_space.spaces["observations"], action_space, num_outputs, model_config,
+                         name)
+
+        self.obs_size = obs_space.spaces["observations"].shape[0]
+        self.fc_size = fc_size
+        self.lstm_state_size = lstm_state_size
+
+        # Build the Module from fc + LSTM + 2xfc (action + value outs).
+        self.fc1 = nn.Linear(self.obs_size, self.fc_size)
+        self.lstm = nn.LSTM(
+            self.fc_size, self.lstm_state_size, batch_first=True)
+        self.action_branch = nn.Linear(self.lstm_state_size, num_outputs)
+        self.value_branch = nn.Linear(self.lstm_state_size, 1)
+        # Holds the current "base" output (before logits layer).
+        self._features = None
+
+    @override(ModelV2)
+    def get_initial_state(self):
+        # TODO: (sven): Get rid of `get_initial_state` once Trajectory
+        #  View API is supported across all of RLlib.
+        # Place hidden states on same device as model.
+        h = [
+            self.fc1.weight.new(1, self.lstm_state_size).zero_().squeeze(0),
+            self.fc1.weight.new(1, self.lstm_state_size).zero_().squeeze(0)
+        ]
+        return h
+
+    @override(ModelV2)
+    def value_function(self):
+        assert self._features is not None, "must call forward() first"
+        return torch.reshape(self.value_branch(self._features), [-1])
+
+    @override(TorchRNN)
+    def forward(
+        self,
+        input_dict: Dict[str, TensorType],
+        state: List[TensorType],
+        seq_lens: TensorType,
+    ) -> Tuple[TensorType, List[TensorType]]:
+        print("input_dict", input_dict)
+        action_mask = None
+
+        flat_inputs = input_dict["obs"]
+
+        if type(flat_inputs) == dict:
+            action_mask = flat_inputs["action_mask"]
+            flat_inputs = flat_inputs["observations"]
+
+        print("flat_inputs", flat_inputs)
+        # convert flat inputs to float
+        flat_inputs = torch.tensor(flat_inputs, dtype=torch.float32)
+        self.time_major = self.model_config.get("_time_major", False)
+        inputs = add_time_dimension(
+            flat_inputs,
+            seq_lens=seq_lens,
+            framework="torch",
+            time_major=self.time_major,
+        )
+        output, new_state = self.forward_rnn(inputs, state, seq_lens)
+        output = torch.reshape(output, [-1, self.num_outputs])
+        
+        if type(flat_inputs) == dict:
+            inf_mask = torch.clamp(torch.log(action_mask), -1e10, FLOAT_MAX)
+            output = output + inf_mask
+            print(output)
+
+        return output, new_state
+
+    @override(TorchRNN)
+    def forward_rnn(self, inputs, state, seq_lens):
+        """Feeds `inputs` (B x T x ..) through the Gru Unit.
+
+        Returns the resulting outputs as a sequence (B x T x ...).
+        Values are stored in self._cur_value in simple (B) shape (where B
+        contains both the B and T dims!).
+
+        Returns:
+            NN Outputs (B x T x ...) as sequence.
+            The state batches as a List of two items (c- and h-states).
+        """
+        x = nn.functional.relu(self.fc1(inputs))
+        self._features, [h, c] = self.lstm(
+            x, [torch.unsqueeze(state[0], 0),
+                torch.unsqueeze(state[1], 0)])
+        action_out = self.action_branch(self._features)
+        return action_out, [torch.squeeze(h, 0), torch.squeeze(c, 0)]
+
 def policy_mapping_fn(agent_id, episode, worker, **kwargs):
     """Function to allow evaluation, whether the policy plays as both player 1 and player 2."""
     
@@ -180,7 +275,7 @@ def env_creator(render=None):
 if __name__ == "__main__":
 
     eval_fn = custom_eval_function
-    ModelCatalog.register_custom_model("am_model", ActionMaskModel)
+    ModelCatalog.register_custom_model("am_model", TorchRNNModel)
 
     register_env("Coup", lambda config: PettingZooEnv(env_creator()))
 
@@ -199,7 +294,10 @@ if __name__ == "__main__":
             policy_mapping_fn=(lambda agent_id, *args, **kwargs: "policy"),
         )
         .training(
-            model={"custom_model": "am_model"},
+            model={
+                "custom_model": "am_model",
+                   
+                   },
             train_batch_size = 20_000,
             entropy_coeff=0.001,
             #entropy_coeff = 0.01,
