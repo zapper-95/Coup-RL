@@ -158,14 +158,8 @@ class ActionMaskModel(TorchModelV2, nn.Module):
 
 
 def policy_mapping_fn(agent_id, episode, worker, **kwargs):
-    """Function to allow evaluation, whether the policy plays as both player 1 and player 2."""
-    
-    # divide the evaluation randomly between each player
-
-    # ensure the same agent is used in a give episode
-    random.seed(episode.episode_id)
-
-    if random.randint(0,1) == 0:
+    """Function to allow evaluation evenly"""
+    if episode.episode_id % 2:
         return "policy" if agent_id == "player_1" else "random"
     else:
         return "policy" if agent_id == "player_2" else "random"
@@ -197,6 +191,7 @@ if __name__ == "__main__":
                 "random": (RandomPolicyActionMask, obs_space, act_space, {}),
             },
             policy_mapping_fn=(lambda agent_id, *args, **kwargs: "policy"),
+            policies_to_train=["policy"],
         )
         .training(
             model={"custom_model": "am_model"},
@@ -234,7 +229,6 @@ if __name__ == "__main__":
             evaluation_config={
                 "multiagent": {
                     "policy_mapping_fn": policy_mapping_fn
-                    #"policy_mapping_fn": (lambda agent_id, *args, **kwargs: "player_1" if agent_id == "player_1" else "random")
                     
                 }
             },       
