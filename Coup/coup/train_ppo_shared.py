@@ -79,7 +79,7 @@ class RandomPolicyActionMask(RandomPolicy):
 def eval_policy_vs_random(eval_workers):
 
     # Set so environment is partially observable
-    eval_workers.foreach_env(lambda env: env.env.set_training_mode(True))
+    eval_workers.foreach_env(lambda env: env.env.set_training_mode(False))
 
 
     print(f"Evaluating against random:")
