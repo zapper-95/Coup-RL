@@ -4,7 +4,7 @@ Code to train a PPO agent on the Coup environment using Ray RLlib.
 This code is based on the action masking example from the RLlib repository:
 https://github.com/ray-project/ray/blob/master/rllib/examples/action_masking.py#L52
 https://github.com/ray-project/ray/blob/master/rllib/examples/custom_eval.py
-
+https://github.com/ray-project/ray/blob/master/rllib/examples/custom_eval.py
 """
 
 import argparse
@@ -77,9 +77,14 @@ class RandomPolicyActionMask(RandomPolicy):
 
 
 def eval_policy_vs_random(eval_workers):
+
+    # Set so environment is partially observable
+    eval_workers.foreach_env(lambda env: env.env.set_training_mode(True))
+
+
     print(f"Evaluating against random:")
     # Run evaluation episodes.
-    for i in range(100):
+    for _ in range(100):
         # Running one episode per worker.
         eval_workers.foreach_worker(func=lambda w: w.sample(), local_worker=False)
 
@@ -90,19 +95,10 @@ def eval_policy_vs_random(eval_workers):
     # remove as always zero, because the game is zero sum
     del metrics["hist_stats"]["episode_reward"]
 
-    #print(metrics)
-
-
     policy_winrate = [1 if x > 0 else 0 for x in metrics["hist_stats"][f"policy_policy_reward"]]
     policy_winrate = sum(policy_winrate)/len(policy_winrate)
 
-    
-
-
     metrics["policy_winrate"] = policy_winrate
-
-
-
 
     print(metrics)
     return metrics
@@ -167,7 +163,8 @@ def policy_mapping_fn(agent_id, episode, worker, **kwargs):
 
 
 def env_creator(render=None):
-    env = coup_v2.env(k_actions=10)
+    env = coup_v2.env(k_actions=4)
+    env.set_training_mode(True)
     return env
 
 
@@ -237,7 +234,7 @@ if __name__ == "__main__":
         .rollouts(num_rollout_workers=3)
     )
     
-    ray.init(ignore_reinit_error=True)
+    ray.init(ignore_reinit_error=True, local_mode=True)
 
     os.makedirs("ray_results", exist_ok=True)
 
