@@ -27,7 +27,6 @@ ACTIONS = [
 ]
 NUM_ITERS = 100
 
-
 def env(render_mode=None):
     """
     The env function often wraps the environment in wrappers by default.
@@ -53,10 +52,10 @@ class CoupEnv(AECEnv):
         "name": "coup_v2",
     }
 
-    def __init__(self, render_mode=None, k_actions=4):
+    def __init__(self, render_mode=None, k_actions=4, train=False):
         assert k_actions >= 4
         self.k_actions = k_actions
-
+        self.train = train
 
         self.render_mode = render_mode
     
@@ -189,6 +188,10 @@ class CoupEnv(AECEnv):
         print()
         print()
 
+    
+
+    def set_training_mode(self, train):
+        self.train = train
 
     def observe(self, agent):
         """Returns the observation of a given player. This is imperfect information, as the player cannot see the other player's cards."""
@@ -335,8 +338,8 @@ class CoupEnv(AECEnv):
                 int(self.state_space[f"{agent}_card_1_alive"]),
                 int(self.state_space[f"{agent}_card_2_alive"]),
                 self.state_space[f"{agent}_coins"],
-                CARDS.index(self.state_space[f"{other_agent}_card_1"]) if not self.state_space[f"{other_agent}_card_1_alive"] else len(CARDS),
-                CARDS.index(self.state_space[f"{other_agent}_card_2"]) if not self.state_space[f"{other_agent}_card_2_alive"] else len(CARDS),
+                CARDS.index(self.state_space[f"{other_agent}_card_1"]) if self.train or not self.state_space[f"{other_agent}_card_1_alive"] else len(CARDS),
+                CARDS.index(self.state_space[f"{other_agent}_card_2"]) if self.train or not self.state_space[f"{other_agent}_card_2_alive"] else len(CARDS),
                 self.state_space[f"{other_agent}_coins"],
 
             ]
