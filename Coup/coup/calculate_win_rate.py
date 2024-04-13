@@ -12,10 +12,10 @@ num_games = 1000
 
 
 checkpoint_path = get_last_agent_path()
-checkpoint_path = get_nth_latest_model(4)
+#checkpoint_path = get_nth_latest_model(4)
 
 def env_creator():
-    env = coup_v2.env()
+    env = coup_v2.env(train=False)
     return env
 
 
