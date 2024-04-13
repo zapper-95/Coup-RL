@@ -12,7 +12,7 @@ import argparse
 
 
 def env_creator(render_mode=None):
-    env = coup_v2.env(render_mode=render_mode)
+    env = coup_v2.env(render_mode=render_mode, train=True)
     return env
 
 
@@ -43,7 +43,7 @@ def print_obs(env, obs):
 
 if __name__ == "__main__":
 
-    checkpoint_path = get_nth_latest_model(2)
+    checkpoint_path = get_nth_latest_model(1)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--render_mode", type=str, default=None, help="Render mode for the environment")
