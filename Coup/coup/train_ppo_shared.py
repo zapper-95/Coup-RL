@@ -47,7 +47,7 @@ from ray.rllib.policy.policy import Policy
 from ray.rllib.policy.sample_batch import SampleBatch
 from ray.rllib.utils.annotations import override
 from ray.rllib.utils.typing import ModelWeights, TensorStructType, TensorType
-
+from ray.rllib.examples.models.action_mask_model import TorchActionMaskModel as ActionMaskModel
 
 
 
@@ -121,36 +121,36 @@ def custom_eval_function(algorithm, eval_workers:WorkerSet):
 
 
 
-class ActionMaskModel(TorchModelV2, nn.Module):
-    """Custom PyTorch model to handle action masking, and processing multi-discrete observations."""
+# class ActionMaskModel(TorchModelV2, nn.Module):
+#     """Custom PyTorch model to handle action masking, and processing multi-discrete observations."""
 
-    def __init__(self, obs_space, action_space, num_outputs, model_config, name):
-        TorchModelV2.__init__(self, obs_space, action_space, num_outputs, model_config, name)
-        nn.Module.__init__(self)
+#     def __init__(self, obs_space, action_space, num_outputs, model_config, name):
+#         TorchModelV2.__init__(self, obs_space, action_space, num_outputs, model_config, name)
+#         nn.Module.__init__(self)
         
-        print(model_config["fcnet_hiddens"])
+#         print(model_config["fcnet_hiddens"])
 
-        self.action_space = action_space
-        self.obs_space = obs_space
-        self.fcnet = TorchFC(obs_space.spaces['observations'], action_space, num_outputs, model_config, name)
+#         self.action_space = action_space
+#         self.obs_space = obs_space
+#         self.fcnet = TorchFC(obs_space.spaces['observations'], action_space, num_outputs, model_config, name)
 
-    def forward(self, input_dict, state, seq_lens):
-        """Forward propogation to get a set of logits corresponding to actions.
+#     def forward(self, input_dict, state, seq_lens):
+#         """Forward propogation to get a set of logits corresponding to actions.
         
-        To prevent illegal actions, we add a large negative value to the logits of illegal actions.
-        """
-        # Corrected observation extraction from input_dict
-        obs = input_dict["obs"]["observations"]
-        action_mask = input_dict["obs"]["action_mask"]
-        # Forward pass through the network
-        action_logits, _ = self.fcnet({"obs": obs})
+#         To prevent illegal actions, we add a large negative value to the logits of illegal actions.
+#         """
+#         # Corrected observation extraction from input_dict
+#         obs = input_dict["obs"]["observations"]
+#         action_mask = input_dict["obs"]["action_mask"]
+#         # Forward pass through the network
+#         action_logits, _ = self.fcnet({"obs": obs})
         
-        inf_mask = torch.clamp(torch.log(action_mask), -1e10, FLOAT_MAX)
+#         inf_mask = torch.clamp(torch.log(action_mask), -1e10, FLOAT_MAX)
         
-        return action_logits + inf_mask, state
+#         return action_logits + inf_mask, state
 
-    def value_function(self):
-        return self.fcnet.value_function()
+#     def value_function(self):
+#         return self.fcnet.value_function()
 
 
 def policy_mapping_fn(agent_id, episode, worker, **kwargs):
@@ -192,11 +192,11 @@ if __name__ == "__main__":
         )
         .training(
             model={"custom_model": "am_model"},
-            train_batch_size = 20_000,
+            #train_batch_size = 20_000,
             entropy_coeff=0.001,
             #entropy_coeff = 0.01,
             lr=0.001,
-            sgd_minibatch_size=2048,
+            #sgd_minibatch_size=2048,
         )
         .environment(
             "Coup",
