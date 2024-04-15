@@ -48,7 +48,7 @@ from ray.rllib.policy.sample_batch import SampleBatch
 from ray.rllib.utils.annotations import override
 from ray.rllib.utils.typing import ModelWeights, TensorStructType, TensorType
 from ray.rllib.examples.models.action_mask_model import TorchActionMaskModel as ActionMaskModel
-
+from models import ActionMaskCentralizedCritic
 
 
 torch, nn = try_import_torch()
@@ -171,7 +171,7 @@ def env_creator(render=None):
 if __name__ == "__main__":
 
     eval_fn = custom_eval_function
-    ModelCatalog.register_custom_model("am_model", ActionMaskModel)
+    ModelCatalog.register_custom_model("am_model", ActionMaskCentralizedCritic)
 
     register_env("Coup", lambda config: PettingZooEnv(env_creator()))
 
@@ -192,11 +192,11 @@ if __name__ == "__main__":
         )
         .training(
             model={"custom_model": "am_model"},
-            #train_batch_size = 20_000,
+            train_batch_size = 10_000,
             entropy_coeff=0.001,
             #entropy_coeff = 0.01,
             lr=0.001,
-            #sgd_minibatch_size=2048,
+            sgd_minibatch_size=10_000,
         )
         .environment(
             "Coup",
