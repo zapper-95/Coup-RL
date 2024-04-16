@@ -11,6 +11,8 @@ from ray.rllib.utils.framework import try_import_tf, try_import_torch
 from ray.rllib.utils.torch_utils import FLOAT_MIN
 from ray.rllib.models.torch.misc import SlimFC
 from ray.rllib.utils.annotations import override
+import coup_v2
+from ray.rllib.env import PettingZooEnv
 
 
 torch, nn = try_import_torch()
@@ -42,10 +44,15 @@ class ActionMaskCentralizedCritic(TorchModelV2, nn.Module):
             name + "_internal",
             )
 
+
+        # test_env = PettingZooEnv(coup_v2.env())
+        # obs_space_len = len(test_env.observation_space["player_1"]["observations"].nvec)
+        # act_space_len = len(test_env.action_space["player_1"].n)
         # Central VF maps (obs, opp_obs, opp_act) -> vf_pred
-        input_size = 6 + 6 + 2  # obs + opp_obs + opp_act
+        #input_size = obs_space_len + obs_space_len + act_space_len  # obs + opp_obs + opp_act
+        input_size = 2
         self.central_vf = nn.Sequential(
-            SlimFC(input_size, 16, activation_fn=nn.Tanh),
+            SlimFC(37, 16, activation_fn=nn.Tanh),
             SlimFC(16, 1),
         )
 
@@ -65,13 +72,69 @@ class ActionMaskCentralizedCritic(TorchModelV2, nn.Module):
         # Return masked logits.
         return masked_logits, state
 
-    def central_value_function(self, obs, opponent_obs, opponent_actions):
-        print(opponent_obs["observations"], opponent_actions, obs["observations"])
+
+
+    def adjust_tensor_size(self, tensor, target_size):
+        """Adjust the size of the observation and action tensors to be as large as the reward tensor."""
+        current_size = tensor.size(0)
+        if current_size < target_size:
+            
+            # if it is the action tensor, add a pass action to it
+            if len(tensor.size()) == 1:
+                last_row = torch.tensor([9])
+            else:
+                # extend observation tensors by repeating the last row
+                last_row = tensor[-1].unsqueeze(0).repeat(target_size - current_size, 1)
+            adjusted_tensor = torch.cat((tensor, last_row), dim=0)
+        elif current_size > target_size:
+            # Truncate the tensor
+            adjusted_tensor = tensor[:target_size]
+        else:
+            adjusted_tensor = tensor
+        return adjusted_tensor
+
+    def central_value_function(self, rewards, obs, opponent_obs, opponent_actions):
+        if type(obs) is dict:
+            obs = obs["observations"]
+        
+        if type(opponent_obs) is dict:
+            opponent_obs = opponent_obs["observations"]
+
+        expected_size = rewards.size(0)
+
+
+        obs = self.adjust_tensor_size(obs, expected_size)
+        opponent_obs = self.adjust_tensor_size(opponent_obs, expected_size)
+        opponent_actions = self.adjust_tensor_size(opponent_actions, expected_size)
+
+
+
+        # if obs.size(0) < opponent_obs.size(0):
+        #     # Add enough rows to `obs` to match `opponent_obs`
+        #     rows_to_add = opponent_obs.size(0) - obs.size(0)
+        #     last_row = obs[-1].unsqueeze(0).repeat(rows_to_add, 1)  # repeat the last row
+        #     obs = torch.cat((obs, last_row), dim=0)
+        # elif obs.size(0) > opponent_obs.size(0):
+        #     # Add enough rows to `opponent_obs` to match `obs`
+        #     rows_to_add = obs.size(0) - opponent_obs.size(0)
+        #     last_row = opponent_obs[-1].unsqueeze(0).repeat(rows_to_add, 1)
+        #     opponent_obs = torch.cat((opponent_obs, last_row), dim=0)
+                
+        # if opponent_actions.size(0) < obs.size(0):
+        #     opponent_actions = torch.cat((opponent_actions, torch.tensor([9])), dim=0)
+            
+
+        # print("obs")
+        # print(obs.size())
+        # print("opponent_obs")
+        # print(opponent_obs.size())
+        # print("opponent_actions")
+        # print(torch.nn.functional.one_hot(opponent_actions.long(), 13).float().size())
         input_ = torch.cat(
             [
-                obs["observations"],
-                opponent_obs["observations"],
-                torch.nn.functional.one_hot(opponent_actions.long(), 2).float(),
+                obs,
+                opponent_obs,
+                torch.nn.functional.one_hot(opponent_actions.long(), 13).float(),
             ],
             1,
         )
