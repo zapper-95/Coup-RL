@@ -197,6 +197,7 @@ if __name__ == "__main__":
             #entropy_coeff = 0.01,
             lr=0.001,
             sgd_minibatch_size=10_000,
+            num_sgd_iter=15,
         )
         .environment(
             "Coup",
@@ -231,7 +232,7 @@ if __name__ == "__main__":
             },       
             custom_evaluation_function=eval_fn
         )
-        .rollouts(num_rollout_workers=3)
+        .rollouts(num_rollout_workers=3, batch_mode="complete_episodes")
     )
     
     ray.init(ignore_reinit_error=True, local_mode=True)
