@@ -190,8 +190,6 @@ class CoupEnv(AECEnv):
 
     
 
-    def set_training_mode(self, train):
-        self.train = train
 
     def observe(self, agent):
         """Returns the observation of a given player. This is imperfect information, as the player cannot see the other player's cards."""
@@ -338,8 +336,8 @@ class CoupEnv(AECEnv):
                 int(self.state_space[f"{agent}_card_1_alive"]),
                 int(self.state_space[f"{agent}_card_2_alive"]),
                 self.state_space[f"{agent}_coins"],
-                CARDS.index(self.state_space[f"{other_agent}_card_1"]) if self.train or not self.state_space[f"{other_agent}_card_1_alive"] else len(CARDS),
-                CARDS.index(self.state_space[f"{other_agent}_card_2"]) if self.train or not self.state_space[f"{other_agent}_card_2_alive"] else len(CARDS),
+                CARDS.index(self.state_space[f"{other_agent}_card_1"]) if not self.state_space[f"{other_agent}_card_1_alive"] else len(CARDS),
+                CARDS.index(self.state_space[f"{other_agent}_card_2"]) if not self.state_space[f"{other_agent}_card_2_alive"] else len(CARDS),
                 self.state_space[f"{other_agent}_coins"],
 
             ]
