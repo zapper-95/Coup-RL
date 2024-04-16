@@ -36,12 +36,12 @@ class ActionMaskCentralizedCritic(TorchModelV2, nn.Module):
         nn.Module.__init__(self)
 
         # Base of the model
-        self.internal_model = TorchFC(
+        self.model = TorchFC(
             obs_space["observations"],
             action_space,
             num_outputs,
             model_config,
-            name + "_internal",
+            name,
             )
 
 
@@ -52,8 +52,8 @@ class ActionMaskCentralizedCritic(TorchModelV2, nn.Module):
         #input_size = obs_space_len + obs_space_len + act_space_len  # obs + opp_obs + opp_act
         input_size = 2
         self.central_vf = nn.Sequential(
-            SlimFC(37, 16, activation_fn=nn.Tanh),
-            SlimFC(16, 1),
+            SlimFC(37, 60, activation_fn=nn.Tanh),
+            SlimFC(60, 1),
         )
 
     @override(ModelV2)
@@ -62,7 +62,7 @@ class ActionMaskCentralizedCritic(TorchModelV2, nn.Module):
         action_mask = input_dict["obs"]["action_mask"]
 
         # Compute the unmasked logits.
-        logits, _ = self.internal_model({"obs": input_dict["obs"]["observations"]}, state, seq_lens)
+        logits, _ = self.model({"obs": input_dict["obs"]["observations"]}, state, seq_lens)
 
 
         # Convert action_mask into a [0.0 || -inf]-type mask.
@@ -142,4 +142,4 @@ class ActionMaskCentralizedCritic(TorchModelV2, nn.Module):
     
     @override(ModelV2)
     def value_function(self):
-        return self.internal_model.value_function()
+        return self.model.value_function()

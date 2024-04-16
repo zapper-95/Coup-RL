@@ -91,7 +91,6 @@ OPPONENT_OBS = "opponent_obs"
 OPPONENT_ACTION = "opponent_action"
 
 
-
 class CentralizedValueMixin:
     """Add method to evaluate the central value function from the model."""
 
@@ -147,6 +146,7 @@ def centralized_critic_postprocessing(
     if completed:
         last_r = 0.0
     else:
+        print("hello there \n \n \n \n \n")
         last_r = sample_batch[SampleBatch.VF_PREDS][-1]
 
     train_batch = compute_advantages(
@@ -180,52 +180,6 @@ def loss_with_central_critic(policy, base_policy, model, dist_class, train_batch
     return loss
 
 
-def central_vf_stats(policy, train_batch):
-    # Report the explained variance of the central value function.
-    return {
-        "vf_explained_var": explained_variance(
-            train_batch[Postprocessing.VALUE_TARGETS], policy._central_value_out
-        )
-    }
-
-
-def get_ccppo_policy(base):
-    class CCPPOTFPolicy(CentralizedValueMixin, base):
-        def __init__(self, observation_space, action_space, config):
-            base.__init__(self, observation_space, action_space, config)
-            CentralizedValueMixin.__init__(self)
-
-        @override(base)
-        def loss(self, model, dist_class, train_batch):
-            # Use super() to get to the base PPO policy.
-            # This special loss function utilizes a shared
-            # value function defined on self, and the loss function
-            # defined on PPO policies.
-            return loss_with_central_critic(
-                self, super(), model, dist_class, train_batch
-            )
-
-        @override(base)
-        def postprocess_trajectory(
-            self, sample_batch, other_agent_batches=None, episode=None
-        ):
-            return centralized_critic_postprocessing(
-                self, sample_batch, other_agent_batches, episode
-            )
-
-        @override(base)
-        def stats_fn(self, train_batch: SampleBatch):
-            stats = super().stats_fn(train_batch)
-            stats.update(central_vf_stats(self, train_batch))
-            return stats
-
-    return CCPPOTFPolicy
-
-
-CCPPOStaticGraphTFPolicy = get_ccppo_policy(PPOTF1Policy)
-CCPPOEagerTFPolicy = get_ccppo_policy(PPOTF2Policy)
-
-
 class CCPPOTorchPolicy(CentralizedValueMixin, PPOTorchPolicy):
     def __init__(self, observation_space, action_space, config):
         PPOTorchPolicy.__init__(self, observation_space, action_space, config)
@@ -243,15 +197,11 @@ class CCPPOTorchPolicy(CentralizedValueMixin, PPOTorchPolicy):
             self, sample_batch, other_agent_batches, episode
         )
 
-
 class CentralizedCritic(PPO):
     @classmethod
     @override(PPO)
     def get_default_policy_class(cls, config):
         return CCPPOTorchPolicy
-
-
-
 
 
 # START OF NORMAL CODE
@@ -341,7 +291,7 @@ def env_creator(render=None):
 if __name__ == "__main__":
 
     eval_fn = custom_eval_function
-    ModelCatalog.register_custom_model("am_model", ActionMaskCentralizedCritic)
+    ModelCatalog.register_custom_model("am_model", ActionMaskModel)
 
     register_env("Coup", lambda config: PettingZooEnv(env_creator()))
 
@@ -362,12 +312,12 @@ if __name__ == "__main__":
         )
         .training(
             model={"custom_model": "am_model"},
-            train_batch_size = 10_000,
+            train_batch_size = 20_000,
             entropy_coeff=0.001,
             #entropy_coeff = 0.01,
-            lr=0.001,
-            sgd_minibatch_size=10_000,
-            num_sgd_iter=15,
+            lr=0.0001,
+            sgd_minibatch_size=20_000,
+            num_sgd_iter=10,
         )
         .environment(
             "Coup",
@@ -411,14 +361,20 @@ if __name__ == "__main__":
 
 
     stop = {
-        "training_iteration": 10,
+        "training_iteration": 50,
     }
 
 
     tuner = tune.Tuner(
-        CentralizedCritic,
+        #CentralizedCritic,
+        PPO,
         param_space=config.to_dict(),
-        run_config=air.RunConfig(stop=stop, verbose=1, storage_path= os.path.normpath(os.path.abspath("./ray_results"))),
+        run_config=air.RunConfig(
+            stop=stop,
+            verbose=1,
+            storage_path= os.path.normpath(os.path.abspath("./ray_results")),
+            checkpoint_config= CheckpointConfig(checkpoint_at_end=True, checkpoint_frequency=5),
+            ),
 
     )
 
