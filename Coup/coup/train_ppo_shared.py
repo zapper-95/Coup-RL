@@ -84,11 +84,11 @@ from ray.rllib.utils.test_utils import check_learning_achieved
 from ray.rllib.utils.tf_utils import explained_variance, make_tf_callable
 from ray.rllib.utils.torch_utils import convert_to_torch_tensor
 
-tf1, tf, tfv = try_import_tf()
 torch, nn = try_import_torch()
 
 OPPONENT_OBS = "opponent_obs"
 OPPONENT_ACTION = "opponent_action"
+
 
 
 class CentralizedValueMixin:
@@ -146,7 +146,6 @@ def centralized_critic_postprocessing(
     if completed:
         last_r = 0.0
     else:
-        print("hello there \n \n \n \n \n")
         last_r = sample_batch[SampleBatch.VF_PREDS][-1]
 
     train_batch = compute_advantages(
@@ -290,8 +289,17 @@ def env_creator(render=None):
 
 if __name__ == "__main__":
 
+
+    parser = argparse.ArgumentParser(description="Process the system type.")
+    parser.add_argument("-t", "--training", default="decentralised",
+                        choices=["decentralised", "centralised"],
+                        help="Specify the type of training: 'decentralised' or 'centralised'")
+
+    args = parser.parse_args()
+
+
     eval_fn = custom_eval_function
-    ModelCatalog.register_custom_model("am_model", ActionMaskModel)
+    ModelCatalog.register_custom_model("am_model", ActionMaskModel if args.training == "decentralised" else ActionMaskCentralizedCritic)
 
     register_env("Coup", lambda config: PettingZooEnv(env_creator()))
 
@@ -315,9 +323,10 @@ if __name__ == "__main__":
             train_batch_size = 20_000,
             entropy_coeff=0.001,
             #entropy_coeff = 0.01,
-            lr=0.0001,
-            sgd_minibatch_size=20_000,
-            num_sgd_iter=10,
+            lr=0.001,
+            #sgd_minibatch_size=20_000,
+            sgd_minibatch_size=2048,
+            #num_sgd_iter=10,
         )
         .environment(
             "Coup",
@@ -367,9 +376,10 @@ if __name__ == "__main__":
 
     tuner = tune.Tuner(
         #CentralizedCritic,
-        PPO,
+        PPO if args.training == "decentralised" else CentralizedCritic,
         param_space=config.to_dict(),
         run_config=air.RunConfig(
+            name=f"PPO_{args.training}",
             stop=stop,
             verbose=1,
             storage_path= os.path.normpath(os.path.abspath("./ray_results")),
