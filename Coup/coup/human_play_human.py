@@ -2,7 +2,7 @@ import coup_v2
 import numpy as np
 
 
-env = coup_v2.env(render_mode="human", train=True)
+env = coup_v2.env(render_mode="human")
 env.reset()
 env.render(display_action=False)
 for agent in env.agent_iter():

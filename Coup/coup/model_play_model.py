@@ -3,7 +3,8 @@ from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.env.wrappers.pettingzoo_env import PettingZooEnv
 from ray.tune.registry import register_env
 from ray.rllib.models import ModelCatalog
-from train_ppo import ActionMaskModel
+from ray.rllib.examples.models.action_mask_model import TorchActionMaskModel as ActionMaskModel
+from models import ActionMaskCentralisedCritic
 from utils import get_last_agent_path, get_penultimate_agent_path, get_nth_latest_model
 import ray
 import numpy as np

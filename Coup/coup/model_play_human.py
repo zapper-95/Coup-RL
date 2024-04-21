@@ -3,7 +3,8 @@ from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.env.wrappers.pettingzoo_env import PettingZooEnv
 from ray.tune.registry import register_env
 from ray.rllib.models import ModelCatalog
-from train_ppo import ActionMaskModel
+from ray.rllib.examples.models.action_mask_model import TorchActionMaskModel as ActionMaskModel
+from models import ActionMaskCentralisedCritic
 from utils import get_last_agent_path, get_nth_latest_model
 import argparse
 
@@ -12,7 +13,7 @@ import argparse
 
 
 def env_creator(render_mode=None):
-    env = coup_v2.env(render_mode=render_mode, train=True)
+    env = coup_v2.env(render_mode=render_mode)
     return env
 
 
@@ -46,7 +47,7 @@ if __name__ == "__main__":
     checkpoint_path = get_nth_latest_model(1)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--render_mode", type=str, default=None, help="Render mode for the environment")
+    parser.add_argument("--render_mode", type=str, default="human", help="Render mode for the environment")
     args = parser.parse_args()
 
     render_mode = args.render_mode
@@ -56,7 +57,7 @@ if __name__ == "__main__":
     else:
         env = env_creator()
 
-    ModelCatalog.register_custom_model("am_model", ActionMaskModel)
+    ModelCatalog.register_custom_model("am_model", ActionMaskCentralisedCritic)
     register_env("Coup", lambda config: PettingZooEnv(env_creator()))
     PPO_agent = Algorithm.from_checkpoint(checkpoint_path)
 
