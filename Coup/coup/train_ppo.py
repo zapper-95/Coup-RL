@@ -259,7 +259,8 @@ def eval_policy_tests(eval_workers:WorkerSet, metrics):
     int(scenario_tests.coup_test(policy, env)),
     int(scenario_tests.assassinate_test(policy, env)),
     int(scenario_tests.counter_assassinate_test(policy, env)),
-    int(scenario_tests.steal_test(policy, env))
+    int(scenario_tests.steal_test(policy, env)),
+    int(scenario_tests.counter_assassinate_test_2(policy, env)),
     ]
 
     metrics["policy_scenario_tests_fa"] = scen_tests[0]
@@ -267,7 +268,7 @@ def eval_policy_tests(eval_workers:WorkerSet, metrics):
     metrics["policy_scenario_tests_assassinate"] = scen_tests[2]
     metrics["policy_scenario_tests_counter_assassinate"] = scen_tests[3]
     metrics["policy_scenario_test_steal"] = scen_tests[4]
-
+    metrics["policy_scenario_counter_assassinate_2"] = scen_tests[5]
     metrics["policy_scenario_tests_total"] = sum(scen_tests)
 
 
@@ -299,12 +300,23 @@ def policy_mapping_fn(agent_id, episode, worker, **kwargs):
 
 
 
-def env_creator(render=None):
-    env = coup_v2.env(k_actions=4)
+def env_creator(k_actions=4):
+    env = coup_v2.env(k_actions=k_actions)
     return env
 
 
 if __name__ == "__main__":
+
+
+
+    hyperparameter_grid = {
+        "clip_param": tune.grid_search([0.1, 0.2, 0.3]),  # how much clipping is applied
+        "gamma": tune.grid_search([0.8, 0.9, 0.99]),
+        "k_past_actions": tune.grid_search([4, 8, 12]),
+        "train_batch_size": tune.grid_search([10_000, 20_000, 40_000]),  # Size of the training batch
+        "critic_type": ["centralised", "decentralised"]
+    }
+
 
 
     parser = argparse.ArgumentParser(description="Process the system type.")
@@ -338,18 +350,16 @@ if __name__ == "__main__":
         .training(
             model={"custom_model": "am_model"},
             train_batch_size = 20_000,
-            entropy_coeff=0.001,
-            #entropy_coeff = 0.01,
+            entropy_coeff = 0.01,
             lr=0.001,
-            #sgd_minibatch_size=20_000,
             sgd_minibatch_size=2048,
-            #num_sgd_iter=10,
         )
         .environment(
             "Coup",
             env_config={
                 "action_space": act_space,
                 "observation_space": obs_space["observations"]
+                "k_actions": tune.grid_search([4, 8, 12]),
                 
             },
         )
@@ -386,8 +396,11 @@ if __name__ == "__main__":
 
 
     stop = {
-        "training_iteration": 20,
+        "training_iteration": 50,
     }
+
+
+
 
 
     tuner = tune.Tuner(
