@@ -52,10 +52,9 @@ class CoupEnv(AECEnv):
         "name": "coup_v2",
     }
 
-    def __init__(self, render_mode=None, k_actions=4, train=False):
+    def __init__(self, render_mode=None, k_actions=4):
         assert k_actions >= 4
         self.k_actions = k_actions
-        self.train = train
 
         self.render_mode = render_mode
     
@@ -101,11 +100,11 @@ class CoupEnv(AECEnv):
                         len(CARDS),
                         2,
                         2,
-                        14,
+                        13,
                         len(CARDS)+1,
                         len(CARDS)+1,
-                        14,
-                        *[len(ACTIONS) for _ in range(self.k_actions)]
+                        13,
+                        #*[len(ACTIONS) for _ in range(self.k_actions)]
                     ]),
                     "action_mask": MultiBinary(len(ACTIONS)),
                 }
@@ -348,7 +347,7 @@ class CoupEnv(AECEnv):
         action_history_array = np.array([ACTIONS.index("none") for _ in range(self.k_actions)])
         action_history_array[-len(self.action_history):] = self.action_history
         
-        observation = np.concatenate((observation, action_history_array))
+        #observation = np.concatenate((observation, action_history_array))
 
         return {"observations": observation, "action_mask": action_mask}
         
