@@ -104,7 +104,7 @@ class CoupEnv(AECEnv):
                         len(CARDS)+1,
                         len(CARDS)+1,
                         13,
-                        #*[len(ACTIONS) for _ in range(self.k_actions)]
+                        *[len(ACTIONS) for _ in range(self.k_actions)]
                     ]),
                     "action_mask": MultiBinary(len(ACTIONS)),
                 }
@@ -168,6 +168,8 @@ class CoupEnv(AECEnv):
         print(f"Turn: P{self.player_turn+1}")
         alive_cards = []
 
+
+        #if action not in [self.get_action_id("pass"), self.get_action_id("none"), self.get_action_id("kill_card_1"), self.get_action_id("kill_card_2")]:
         print("----------------")
         if display_action:
             print(f"Action: {self.get_action_string(action)}")
@@ -347,7 +349,7 @@ class CoupEnv(AECEnv):
         action_history_array = np.array([ACTIONS.index("none") for _ in range(self.k_actions)])
         action_history_array[-len(self.action_history):] = self.action_history
         
-        #observation = np.concatenate((observation, action_history_array))
+        observation = np.concatenate((observation, action_history_array))
 
         return {"observations": observation, "action_mask": action_mask}
         
