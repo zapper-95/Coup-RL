@@ -61,7 +61,7 @@ def foreign_aid_test(policy, env):
     Test FA prob before and after being blocked by Duke.
     Should see a decrease in prob.
     '''
-    
+
     prob_fa = []
     
     
@@ -441,6 +441,90 @@ def counter_assassinate_test(policy, env):
         return False
 
     print("Counter Assassinate test passed")
+    return True
+
+
+def counter_assassinate_test_2(policy, env):
+    '''
+    The probability of counteracting or challenging an assassination with one card remaining should sum to be close to 1, as a player has nothing to lose.
+    Otherwise, they essentially admit defeat
+
+    '''
+
+    prob_counter = []
+    prob_challenge = []
+
+    env.reset()
+
+
+    actions = [
+        env.get_action_id("income"), env.get_action_id("pass"), env.get_action_id("pass"), 
+        env.get_action_id("income"), env.get_action_id("pass"), env.get_action_id("pass"), 
+        env.get_action_id("income"), env.get_action_id("pass"), env.get_action_id("pass"), 
+        env.get_action_id("assassinate"), env.get_action_id("kill_card_1"), env.get_action_id("pass"), 
+        env.get_action_id("income"), env.get_action_id("pass"), env.get_action_id("pass"), 
+        env.get_action_id("income"),env.get_action_id("pass"), env.get_action_id("pass"), 
+        env.get_action_id("income"),env.get_action_id("pass"), env.get_action_id("pass"), 
+        env.get_action_id("income"), env.get_action_id("pass"), env.get_action_id("pass"),         
+        env.get_action_id("income"),env.get_action_id("pass"), env.get_action_id("pass"), 
+        env.get_action_id("income"),env.get_action_id("pass"), env.get_action_id("pass"),          
+        env.get_action_id("income"),env.get_action_id("pass"), env.get_action_id("pass"),
+        env.get_action_id("assassinate"),         
+        ]    
+
+
+    env.state_space["player_1_card_1"] = "ambassador"
+    env.state_space["player_1_card_2"] = "ambassador"  
+
+    env.state_space["player_2_card_1"] = "assassin"
+    env.state_space["player_2_card_1"] = "assassin"
+
+
+
+
+    i = 0
+    for agent in env.agent_iter():
+        obs, reward, termination, truncation, info = env.last()
+        _, action_mask = obs.values()
+
+        if agent == env.possible_agents[0]:
+            _, _, extra_fetches = policy.compute_single_action(obs)
+
+            prob_co = get_probs_of_action(env, "counteract", action_mask, policy, extra_fetches)
+            prob_ch = get_probs_of_action(env, "challenge", action_mask, policy, extra_fetches)
+            # only add the probability, if the action was available
+            if prob_co is not None:
+                prob_counter.append(prob_co)
+
+            if prob_ch is not None:
+                prob_challenge.append(prob_ch)       
+
+
+
+        if i < len(actions):
+            env.step(actions[i])
+        else:
+            break
+
+        i += 1
+
+
+    if len(prob_counter) != 2:
+        print("Should have 2 probabilities for counteracting")
+        return False
+    
+    if len(prob_challenge) != 2:
+        print("Should have 2 probabilities for challenging")
+        return False
+    
+    print(f"prob_counter {prob_counter}")
+    print(f"prob_challenge {prob_challenge}")
+
+    if prob_counter[1] + prob_challenge[1] < 0.99:
+        print("Probability of counteracting or challenging should sum to be close to 1 when a player only has one card remaining.")
+        return False
+
+    print("Counter Assassinate test 2 passed")
     return True
 
 # def contessa_test():
