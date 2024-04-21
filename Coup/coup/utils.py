@@ -52,6 +52,7 @@ def get_last_agent_path(critic_type="centralised", n=1):
     else:
         latest_folder = get_nth_folder(experiment_folders, n)
     
+    print("selected folder ", latest_folder)
     checkpoint_dirs = get_checkpoints_folder(latest_folder)
     latest_checkpoint = get_sorted_checkpoints(checkpoint_dirs)[-1]
     
