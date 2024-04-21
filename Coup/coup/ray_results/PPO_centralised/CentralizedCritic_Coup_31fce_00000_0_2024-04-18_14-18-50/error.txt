@@ -1,0 +1,74 @@
+Failure # 1 (occurred at 2024-04-18_14-18-53)
+[36mray::CentralizedCritic.train()[39m (pid=2728, ip=127.0.0.1, actor_id=be2aad024c4f2c1e02b2e3e401000000, repr=CentralizedCritic)
+  File "python\ray\_raylet.pyx", line 1889, in ray._raylet.execute_task
+  File "python\ray\_raylet.pyx", line 1830, in ray._raylet.execute_task.function_executor
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\_private\function_manager.py", line 724, in actor_method_executor
+    return method(__ray_actor, *args, **kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\tune\trainable\trainable.py", line 334, in train
+    raise skipped from exception_cause(skipped)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\tune\trainable\trainable.py", line 331, in train
+    result = self.step()
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\algorithms\algorithm.py", line 849, in step
+    results, train_iter_ctx = self._run_one_training_iteration()
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\algorithms\algorithm.py", line 3194, in _run_one_training_iteration
+    results = self.training_step()
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\algorithms\ppo\ppo.py", line 410, in training_step
+    return self._training_step_old_and_hybrid_api_stacks()
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\algorithms\ppo\ppo.py", line 495, in _training_step_old_and_hybrid_api_stacks
+    train_batch = synchronous_parallel_sample(
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\execution\rollout_ops.py", line 88, in synchronous_parallel_sample
+    sampled_data = worker_set.foreach_worker(
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\worker_set.py", line 771, in foreach_worker
+    handle_remote_call_result_errors(remote_results, self._ignore_worker_failures)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\worker_set.py", line 78, in handle_remote_call_result_errors
+    raise r.get()
+ray.exceptions.RayTaskError(RuntimeError): [36mray::RolloutWorker.apply()[39m (pid=2728, ip=127.0.0.1, actor_id=cf5e6987db0b3a4c3074b12101000000, repr=<ray.rllib.evaluation.rollout_worker._modify_class.<locals>.Class object at 0x0000028AA3DB87F0>)
+  File "python\ray\_raylet.pyx", line 1889, in ray._raylet.execute_task
+  File "python\ray\_raylet.pyx", line 1830, in ray._raylet.execute_task.function_executor
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\_private\function_manager.py", line 724, in actor_method_executor
+    return method(__ray_actor, *args, **kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\utils\actor_manager.py", line 189, in apply
+    raise e
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\utils\actor_manager.py", line 178, in apply
+    return func(self, *args, **kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\execution\rollout_ops.py", line 89, in <lambda>
+    lambda w: w.sample(), local_worker=False, healthy_only=True
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\rollout_worker.py", line 713, in sample
+    batch = self.input_reader.next()
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\sampler.py", line 91, in next
+    batches = [self.get_data()]
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\sampler.py", line 273, in get_data
+    item = next(self._env_runner)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\env_runner_v2.py", line 348, in run
+    outputs = self.step()
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\env_runner_v2.py", line 374, in step
+    active_envs, to_eval, outputs = self._process_observations(
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\env_runner_v2.py", line 692, in _process_observations
+    self._handle_done_episode(
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\env_runner_v2.py", line 842, in _handle_done_episode
+    self._build_done_episode(env_id, is_done, outputs)
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\env_runner_v2.py", line 731, in _build_done_episode
+    episode.postprocess_episode(
+  File "C:\Users\josep\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\episode_v2.py", line 320, in postprocess_episode
+    post_batch = policy.postprocess_trajectory(post_batch, other_batches, self)
+  File "C:\Users\josep\Documents\Coup-RL\Coup\coup\train_ppo_shared.py", line 195, in postprocess_trajectory
+    return centralized_critic_postprocessing(
+  File "C:\Users\josep\Documents\Coup-RL\Coup\coup\train_ppo_shared.py", line 120, in centralized_critic_postprocessing
+    policy.compute_central_vf(
+  File "C:\Users\josep\Documents\Coup-RL\Coup\coup\models.py", line 119, in central_value_function
+    input_ = torch.cat(
+RuntimeError: Sizes of tensors must match except in dimension 1. Expected size 8 but got size 7 for tensor number 2 in the list.
