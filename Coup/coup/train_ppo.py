@@ -83,6 +83,7 @@ from ray.rllib.utils.numpy import convert_to_numpy
 from ray.rllib.utils.test_utils import check_learning_achieved
 from ray.rllib.utils.tf_utils import explained_variance, make_tf_callable
 from ray.rllib.utils.torch_utils import convert_to_torch_tensor
+import scenario_tests
 
 torch, nn = try_import_torch()
 
@@ -245,6 +246,31 @@ def eval_policy_vs_random(eval_workers):
     return metrics
 
 
+def eval_policy_tests(eval_workers:WorkerSet, metrics):
+    """Custom policy tests for evaluation."""
+    
+    # get the policy
+    policy = eval_workers.local_worker().policy_map["policy"]
+    env = eval_workers.local_worker().env_creator({}).env
+
+
+    scen_tests = [
+    int(scenario_tests.foreign_aid_test(policy, env)),
+    int(scenario_tests.coup_test(policy, env)),
+    int(scenario_tests.assassinate_test(policy, env)),
+    int(scenario_tests.counter_assassinate_test(policy, env)),
+    int(scenario_tests.steal_test(policy, env))
+    ]
+
+    metrics["policy_scenario_tests_fa"] = scen_tests[0]
+    metrics["policy_scenario_tests_coup"] = scen_tests[1]
+    metrics["policy_scenario_tests_assassinate"] = scen_tests[2]
+    metrics["policy_scenario_tests_counter_assassinate"] = scen_tests[3]
+    metrics["policy_scenario_test_steal"] = scen_tests[4]
+
+    metrics["policy_scenario_tests_total"] = sum(scen_tests)
+
+
 def custom_eval_function(algorithm, eval_workers:WorkerSet):
     """Example of a custom evaluation function.
 
@@ -256,8 +282,8 @@ def custom_eval_function(algorithm, eval_workers:WorkerSet):
         metrics: Evaluation metrics dict.
     """
 
-    metrics= eval_policy_vs_random(eval_workers)
-
+    metrics = eval_policy_vs_random(eval_workers)
+    eval_policy_tests(eval_workers, metrics)
     return metrics
 
 
@@ -336,10 +362,10 @@ if __name__ == "__main__":
         .framework("torch")
         .resources(
             num_gpus = 1 if torch.cuda.is_available() else 0,
-            num_cpus_per_worker = 2,
+            num_cpus_per_worker = 1,
         )
         .evaluation(
-            evaluation_num_workers=2,
+            evaluation_num_workers=1,
             # Enable evaluation, once per training iteration.
             evaluation_interval=1,
             #evaluation_duration=100,
@@ -360,7 +386,7 @@ if __name__ == "__main__":
 
 
     stop = {
-        "training_iteration": 1,
+        "training_iteration": 20,
     }
 
 
