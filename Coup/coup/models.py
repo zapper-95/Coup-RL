@@ -43,11 +43,13 @@ class ActionMaskCentralisedCritic(TorchModelV2, nn.Module):
             model_config,
             name,
             )
+        
+
+        input_size = len(coup_v2.env().observation_space("player_1")["observations"])
 
         self.central_vf = nn.Sequential(
-            SlimFC(8, 64, activation_fn=nn.Tanh),
-            SlimFC(8, 64, activation_fn=nn.Tanh),
-            SlimFC(64, 1),
+            SlimFC(input_size, 128, activation_fn=nn.Tanh),
+            SlimFC(128, 1),
         )
 
     @override(ModelV2)
