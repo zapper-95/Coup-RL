@@ -17,7 +17,7 @@ from ray.rllib.env import PettingZooEnv
 
 torch, nn = try_import_torch()
 
-class ActionMaskCentralizedCritic(TorchModelV2, nn.Module):
+class ActionMaskCentralisedCritic(TorchModelV2, nn.Module):
     """Example of a model that implements both action masking and a centralized VF."""
 
     def __init__(self, obs_space, action_space, num_outputs, model_config, name, **kwargs):
@@ -44,16 +44,10 @@ class ActionMaskCentralizedCritic(TorchModelV2, nn.Module):
             name,
             )
 
-
-        # test_env = PettingZooEnv(coup_v2.env())
-        # obs_space_len = len(test_env.observation_space["player_1"]["observations"].nvec)
-        # act_space_len = len(test_env.action_space["player_1"].n)
-        # Central VF maps (obs, opp_obs, opp_act) -> vf_pred
-        #input_size = obs_space_len + obs_space_len + act_space_len  # obs + opp_obs + opp_act
-        input_size = 2
         self.central_vf = nn.Sequential(
-            SlimFC(37, 60, activation_fn=nn.Tanh),
-            SlimFC(60, 1),
+            SlimFC(8, 64, activation_fn=nn.Tanh),
+            SlimFC(8, 64, activation_fn=nn.Tanh),
+            SlimFC(64, 1),
         )
 
     @override(ModelV2)
@@ -93,48 +87,32 @@ class ActionMaskCentralizedCritic(TorchModelV2, nn.Module):
             adjusted_tensor = tensor
         return adjusted_tensor
 
-    def central_value_function(self, rewards, obs, opponent_obs, opponent_actions):
+    def central_value_function(self, rewards, obs, opponent_obs):
         if type(obs) is dict:
             obs = obs["observations"]
         
         if type(opponent_obs) is dict:
             opponent_obs = opponent_obs["observations"]
 
+        # take only the relevant observations, which are the hidden cards, and discard the rest
+        opponent_obs = opponent_obs[:, 0:2]
+
+        # remove partial observations about the opponent, from the normal observations
+        obs = torch.cat((obs[:, :5], obs[:, 7:]), dim=1)
+
+    
         expected_size = rewards.size(0)
 
 
         obs = self.adjust_tensor_size(obs, expected_size)
+
         opponent_obs = self.adjust_tensor_size(opponent_obs, expected_size)
-        opponent_actions = self.adjust_tensor_size(opponent_actions, expected_size)
 
 
-
-        # if obs.size(0) < opponent_obs.size(0):
-        #     # Add enough rows to `obs` to match `opponent_obs`
-        #     rows_to_add = opponent_obs.size(0) - obs.size(0)
-        #     last_row = obs[-1].unsqueeze(0).repeat(rows_to_add, 1)  # repeat the last row
-        #     obs = torch.cat((obs, last_row), dim=0)
-        # elif obs.size(0) > opponent_obs.size(0):
-        #     # Add enough rows to `opponent_obs` to match `obs`
-        #     rows_to_add = obs.size(0) - opponent_obs.size(0)
-        #     last_row = opponent_obs[-1].unsqueeze(0).repeat(rows_to_add, 1)
-        #     opponent_obs = torch.cat((opponent_obs, last_row), dim=0)
-                
-        # if opponent_actions.size(0) < obs.size(0):
-        #     opponent_actions = torch.cat((opponent_actions, torch.tensor([9])), dim=0)
-            
-
-        # print("obs")
-        # print(obs.size())
-        # print("opponent_obs")
-        # print(opponent_obs.size())
-        # print("opponent_actions")
-        # print(torch.nn.functional.one_hot(opponent_actions.long(), 13).float().size())
         input_ = torch.cat(
             [
                 obs,
-                opponent_obs,
-                torch.nn.functional.one_hot(opponent_actions.long(), 13).float(),
+                opponent_obs.float(),
             ],
             1,
         )
