@@ -5,9 +5,6 @@ def get_experiment_folders(base_path):
     # Define the path to the results folder
     results_folder_path = base_path
 
-
-
-
     # Corrected: Filter only directories for experiments
     experiment_folders = [f for f in glob(os.path.join(results_folder_path, "*")) if os.path.isdir(f)]
     #print(f"Experiment folders found: {experiment_folders}")

@@ -309,13 +309,13 @@ if __name__ == "__main__":
 
 
 
-    hyperparameter_grid = {
-        "clip_param": tune.grid_search([0.1, 0.2, 0.3]),  # how much clipping is applied
-        "gamma": tune.grid_search([0.8, 0.9, 0.99]),
-        "k_past_actions": tune.grid_search([4, 8, 12]),
-        "train_batch_size": tune.grid_search([10_000, 20_000, 40_000]),  # Size of the training batch
-        "critic_type": ["centralised", "decentralised"]
-    }
+    # hyperparameter_grid = {
+    #     "clip_param": tune.grid_search([0.1, 0.2, 0.3]),  # how much clipping is applied
+    #     "gamma": tune.grid_search([0.8, 0.9, 0.99]),
+    #     "k_past_actions": tune.grid_search([4, 8, 12]),
+    #     "train_batch_size": tune.grid_search([20_000]),  # Size of the training batch
+    #     "critic_type": ["centralised", "decentralised"]
+    # }
 
 
 
@@ -353,7 +353,7 @@ if __name__ == "__main__":
         sgd_minibatch_size=2048,
         clip_param=tune.grid_search([0.1, 0.2, 0.3]),
         gamma=tune.grid_search([0.9, 0.95, 0.99]),
-        train_batch_size=tune.grid_search([10_000, 20_000, 30_000, 40_000])
+        train_batch_size=tune.grid_search([20_000])
     )
     config.environment(
         "Coup",
