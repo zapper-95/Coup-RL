@@ -337,58 +337,51 @@ if __name__ == "__main__":
     obs_space = test_env.observation_space["player_1"]
     act_space = test_env.action_space["player_1"]
 
-    config = (
-        ppo.PPOConfig()
-        .multi_agent(
-            policies={
-                "policy": (None, obs_space, act_space, {}),
-                "random": (RandomPolicyActionMask, obs_space, act_space, {}),
-            },
-            policy_mapping_fn=(lambda agent_id, *args, **kwargs: "policy"),
-            policies_to_train=["policy"],
-        )
-        .training(
-            model={"custom_model": "am_model"},
-            train_batch_size = 20_000,
-            entropy_coeff = 0.01,
-            lr=0.001,
-            sgd_minibatch_size=2048,
-        )
-        .environment(
-            "Coup",
-            env_config={
-                "action_space": act_space,
-                "observation_space": obs_space["observations"]
-                "k_actions": tune.grid_search([4, 8, 12]),
-                
-            },
-        )
-        # We need to disable preprocessing of observations, because preprocessing
-        # would flatten the observation dict of the environment before it is passed to the model.
-        .experimental(
-            _enable_new_api_stack=False,
-            _disable_preprocessor_api=True,            
-        )
-        .framework("torch")
-        .resources(
-            num_gpus = 1 if torch.cuda.is_available() else 0,
-            num_cpus_per_worker = 1,
-        )
-        .evaluation(
-            evaluation_num_workers=1,
-            # Enable evaluation, once per training iteration.
-            evaluation_interval=1,
-            #evaluation_duration=100,
-            evaluation_config={
-                "multiagent": {
-                    "policy_mapping_fn": policy_mapping_fn
-                    
-                }
-            },       
-            custom_evaluation_function=eval_fn
-        )
-        .rollouts(num_rollout_workers=3, batch_mode="complete_episodes")
+    config = ppo.PPOConfig()
+    config.multi_agent(
+        policies={
+            "policy": (None, obs_space, act_space, {}),
+            "random": (RandomPolicyActionMask, obs_space, act_space, {}),
+        },
+        policy_mapping_fn=(lambda agent_id, *args, **kwargs: "policy"),
+        policies_to_train=["policy"],
     )
+    config.training(
+        model={"custom_model": "am_model"},
+        entropy_coeff=0.01,
+        lr=0.001,
+        sgd_minibatch_size=2048,
+        clip_param=tune.grid_search([0.1, 0.2, 0.3]),
+        gamma=tune.grid_search([0.9, 0.95, 0.99]),
+        train_batch_size=tune.grid_search([10_000, 20_000, 30_000, 40_000])
+    )
+    config.environment(
+        "Coup",
+        env_config={
+            "action_space": act_space,
+            "observation_space": obs_space["observations"]
+        },
+    )
+    config.experimental(
+        _enable_new_api_stack=False,
+        _disable_preprocessor_api=True,
+    )
+    config.framework("torch")
+    config.resources(
+        num_gpus=1 if torch.cuda.is_available() else 0,
+        num_cpus_per_worker=1,
+    )
+    config.evaluation(
+        evaluation_num_workers=1,
+        evaluation_interval=1,
+        evaluation_config={
+            "multiagent": {
+                "policy_mapping_fn": policy_mapping_fn
+            }
+        },
+        custom_evaluation_function=eval_fn
+    )
+    config.rollouts(num_rollout_workers=3, batch_mode="complete_episodes")
     
     ray.init(ignore_reinit_error=True, local_mode=True)
 
