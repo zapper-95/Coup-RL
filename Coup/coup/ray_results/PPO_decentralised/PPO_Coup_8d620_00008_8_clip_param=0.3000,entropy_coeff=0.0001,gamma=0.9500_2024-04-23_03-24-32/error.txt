@@ -1,0 +1,59 @@
+Failure # 1 (occurred at 2024-04-23_03-59-37)
+[36mray::PPO.train()[39m (pid=29464, ip=127.0.0.1, actor_id=e7f51a417df9d3b049f3830b01000000, repr=PPO)
+  File "python\ray\_raylet.pyx", line 1889, in ray._raylet.execute_task
+  File "python\ray\_raylet.pyx", line 1830, in ray._raylet.execute_task.function_executor
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\_private\function_manager.py", line 724, in actor_method_executor
+    return method(__ray_actor, *args, **kwargs)
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\tune\trainable\trainable.py", line 334, in train
+    raise skipped from exception_cause(skipped)
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\tune\trainable\trainable.py", line 331, in train
+    result = self.step()
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\rllib\algorithms\algorithm.py", line 849, in step
+    results, train_iter_ctx = self._run_one_training_iteration()
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\rllib\algorithms\algorithm.py", line 3194, in _run_one_training_iteration
+    results = self.training_step()
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\rllib\algorithms\ppo\ppo.py", line 410, in training_step
+    return self._training_step_old_and_hybrid_api_stacks()
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 467, in _resume_span
+    return method(self, *_args, **_kwargs)
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\rllib\algorithms\ppo\ppo.py", line 551, in _training_step_old_and_hybrid_api_stacks
+    self.workers.sync_weights(
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\worker_set.py", line 481, in sync_weights
+    self.foreach_worker(
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\rllib\evaluation\worker_set.py", line 762, in foreach_worker
+    remote_results = self.__worker_manager.foreach_actor(
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\rllib\utils\actor_manager.py", line 604, in foreach_actor
+    remote_calls = self._call_actors(
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\rllib\utils\actor_manager.py", line 433, in _call_actors
+    calls = [self._actors[i].apply.remote(func) for i in remote_actor_ids]
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\rllib\utils\actor_manager.py", line 433, in <listcomp>
+    calls = [self._actors[i].apply.remote(func) for i in remote_actor_ids]
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\actor.py", line 202, in remote
+    return self._remote(args, kwargs)
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\_private\auto_init_hook.py", line 21, in auto_init_wrapper
+    return fn(*args, **kwargs)
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\util\tracing\tracing_helper.py", line 426, in _start_span
+    return method(self, args, kwargs, *_args, **_kwargs)
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\actor.py", line 327, in _remote
+    return invocation(args, kwargs)
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\actor.py", line 308, in invocation
+    return actor._actor_method_call(
+  File "D:\Documents\Coup-RL\env\lib\site-packages\ray\actor.py", line 1440, in _actor_method_call
+    object_refs = worker.core_worker.submit_actor_task(
+  File "python\ray\_raylet.pyx", line 4180, in ray._raylet.CoreWorker.submit_actor_task
+  File "python\ray\_raylet.pyx", line 4185, in ray._raylet.CoreWorker.submit_actor_task
+  File "python\ray\_raylet.pyx", line 864, in ray._raylet.prepare_args_and_increment_put_refs
+  File "python\ray\_raylet.pyx", line 855, in ray._raylet.prepare_args_and_increment_put_refs
+  File "python\ray\_raylet.pyx", line 949, in ray._raylet.prepare_args_internal
+  File "python\ray\_raylet.pyx", line 3709, in ray._raylet.CoreWorker.put_serialized_object_and_increment_local_ref
+  File "python\ray\_raylet.pyx", line 3527, in ray._raylet.CoreWorker._create_put_buffer
+  File "python\ray\_raylet.pyx", line 589, in ray._raylet.check_status
+ray.exceptions.RaySystemError: System error: Unknown error

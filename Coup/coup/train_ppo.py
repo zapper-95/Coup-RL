@@ -348,12 +348,12 @@ if __name__ == "__main__":
     )
     config.training(
         model={"custom_model": "am_model"},
-        entropy_coeff=0.01,
+        entropy_coeff=tune.grid_search([0.01,0.001,0.0001]),
         lr=0.001,
         sgd_minibatch_size=2048,
         clip_param=tune.grid_search([0.1, 0.2, 0.3]),
-        gamma=tune.grid_search([0.9, 0.95, 0.99]),
-        train_batch_size=tune.grid_search([20_000])
+        gamma=tune.grid_search([0.95, 0.99]),
+        train_batch_size=20_000
     )
     config.environment(
         "Coup",
@@ -381,7 +381,7 @@ if __name__ == "__main__":
         },
         custom_evaluation_function=eval_fn
     )
-    config.rollouts(num_rollout_workers=3, batch_mode="complete_episodes")
+    config.rollouts(num_rollout_workers=2, batch_mode="complete_episodes")
     
     ray.init(ignore_reinit_error=True, local_mode=True)
 
