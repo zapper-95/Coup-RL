@@ -348,11 +348,12 @@ if __name__ == "__main__":
     )
     config.training(
         model={"custom_model": "am_model"},
-        entropy_coeff=tune.grid_search([0.01,0.001,0.0001]),
+        #entropy_coeff=tune.grid_search([0.01,0.001,0.0001]),
+        entropy_coeff = 0.01,
         lr=0.001,
-        sgd_minibatch_size=2048,
-        clip_param=tune.grid_search([0.1, 0.2, 0.3]),
-        gamma=tune.grid_search([0.95, 0.99]),
+        sgd_minibatch_size=tune.grid_search([2048, 2048, 20_000, 20_000]),
+        #clip_param=tune.grid_search([0.1, 0.2, 0.3]),
+        #gamma=tune.grid_search([0.95, 0.99]),
         train_batch_size=20_000
     )
     config.environment(
@@ -389,7 +390,7 @@ if __name__ == "__main__":
 
 
     stop = {
-        "training_iteration": 50,
+        "training_iteration": 20,
     }
 
 
