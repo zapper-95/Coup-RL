@@ -5,9 +5,9 @@ from ray.tune.registry import register_env
 from ray.rllib.models import ModelCatalog
 from ray.rllib.examples.models.action_mask_model import TorchActionMaskModel as ActionMaskModel
 from models import ActionMaskCentralisedCritic
-from utils import get_last_agent_path, get_nth_latest_model
+from utils import get_experiment_folders, get_sorted_checkpoints, get_checkpoints_folder
 import argparse
-
+import os
 
 
 
@@ -44,7 +44,13 @@ def print_obs(env, obs):
 
 if __name__ == "__main__":
 
-    checkpoint_path = get_nth_latest_model(1)
+    #checkpoint_path = get_nth_latest_model(1)
+    main_folder = os.path.abspath("./ray_results/PPO_decentralised/test_2")
+
+    model_paths = get_experiment_folders(main_folder)
+    print("load model paths")
+    print(model_paths)
+    checkpoint_path = get_sorted_checkpoints(get_checkpoints_folder(model_paths[-1]))[-1]
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--render_mode", type=str, default="human", help="Render mode for the environment")
@@ -57,7 +63,7 @@ if __name__ == "__main__":
     else:
         env = env_creator()
 
-    ModelCatalog.register_custom_model("am_model", ActionMaskCentralisedCritic)
+    ModelCatalog.register_custom_model("am_model", ActionMaskModel)
     register_env("Coup", lambda config: PettingZooEnv(env_creator()))
     PPO_agent = Algorithm.from_checkpoint(checkpoint_path)
 
