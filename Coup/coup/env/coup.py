@@ -169,7 +169,6 @@ class CoupEnv(AECEnv):
         alive_cards = []
 
 
-        #if action not in [self.get_action_id("pass"), self.get_action_id("none"), self.get_action_id("kill_card_1"), self.get_action_id("kill_card_2")]:
         print("----------------")
         if display_action:
             print(f"Action: {self.get_action_string(action)}")
@@ -373,7 +372,6 @@ class CoupEnv(AECEnv):
 
 
         
-        # custom instructions
         self.deck = Deck(CARDS, seed)
         self.state_space = {
             "player_1_card_1": self.deck.draw_card(),
@@ -650,9 +648,6 @@ class CoupEnv(AECEnv):
             self.render(action)
 
 
-
-
-        # cannot end the game if the player has just been assissinated, as they have a chance to counteract or challenge
         reward = self.get_reward(agent, other_agent)
         if self.terminated():
             self.rewards[agent], self.rewards[other_agent] = reward, -reward

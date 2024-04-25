@@ -5,37 +5,43 @@ This code is based on the action masking example from the RLlib repository:
 https://github.com/ray-project/ray/blob/master/rllib/examples/action_masking.py#L52
 https://github.com/ray-project/ray/blob/master/rllib/examples/custom_eval.py
 https://github.com/ray-project/ray/blob/master/rllib/examples/custom_eval.py
+https://github.com/ray-project/ray/blob/master/rllib/examples/centralized_critic.py
 """
+
+
+
+import numpy as np
+from gymnasium.spaces import Discrete
+import os
+
+import ray
+from ray import air, tune
+from ray.rllib.algorithms.ppo.ppo import PPO
+
+from ray.rllib.algorithms.ppo.ppo_torch_policy import PPOTorchPolicy
+from ray.rllib.evaluation.postprocessing import compute_advantages
+from ray.rllib.models import ModelCatalog
+from ray.rllib.policy.sample_batch import SampleBatch
+from ray.rllib.utils.annotations import override
+from ray.rllib.utils.framework import try_import_torch
+from ray.rllib.utils.torch_utils import convert_to_torch_tensor
+import scenario_tests
 
 import argparse
 import os
 import coup_v2
-from gymnasium.spaces import Box, Discrete, MultiDiscrete
-import ray
 from ray.rllib.algorithms import ppo
-from ray.rllib.examples.env.action_mask_env import ActionMaskEnv
-from ray.rllib.examples.rl_module.action_masking_rlm import (
-    TorchActionMaskRLM,
-    TFActionMaskRLM,
-)
 from ray.train import CheckpointConfig
 from ray import tune
-from ray.rllib.core.rl_module.rl_module import SingleAgentRLModuleSpec
 from ray.tune.registry import register_env
-from ray.tune.logger import pretty_print
 from ray.rllib.env import PettingZooEnv
-from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
-from ray.rllib.models.torch.fcnet import FullyConnectedNetwork as TorchFC
 from ray.rllib.utils.framework import try_import_torch
 from ray.rllib.models import ModelCatalog
 from ray.rllib.utils.torch_utils import FLOAT_MAX
 from ray.rllib.evaluation.metrics import collect_episodes, summarize_episodes
-from ray.rllib.utils.test_utils import check_learning_achieved
 from ray.rllib.evaluation.worker_set import WorkerSet
 from ray.rllib.examples.policy.random_policy import RandomPolicy
-from gymnasium.spaces import Box
 import numpy as np
-import random
 import tree  # pip install dm_tree
 from typing import (
     List,
@@ -43,7 +49,6 @@ from typing import (
     Union,
 )
 
-from ray.rllib.policy.policy import Policy
 from ray.rllib.policy.sample_batch import SampleBatch
 from ray.rllib.utils.annotations import override
 from ray.rllib.utils.typing import ModelWeights, TensorStructType, TensorType
@@ -51,39 +56,7 @@ from ray.rllib.examples.models.action_mask_model import TorchActionMaskModel as 
 from models import ActionMaskCentralisedCritic
 
 
-torch, nn = try_import_torch()
 
-# CENTRAL CRITIC MODEL CODE
-
-
-import argparse
-import numpy as np
-from gymnasium.spaces import Discrete
-import os
-
-import ray
-from ray import air, tune
-from ray.rllib.algorithms.ppo.ppo import PPO, PPOConfig
-from ray.rllib.algorithms.ppo.ppo_tf_policy import (
-    PPOTF1Policy,
-    PPOTF2Policy,
-)
-from ray.rllib.algorithms.ppo.ppo_torch_policy import PPOTorchPolicy
-from ray.rllib.evaluation.postprocessing import compute_advantages, Postprocessing
-from ray.rllib.examples.env.two_step_game import TwoStepGame
-from ray.rllib.examples.models.centralized_critic_models import (
-    CentralizedCriticModel,
-    TorchCentralizedCriticModel,
-)
-from ray.rllib.models import ModelCatalog
-from ray.rllib.policy.sample_batch import SampleBatch
-from ray.rllib.utils.annotations import override
-from ray.rllib.utils.framework import try_import_tf, try_import_torch
-from ray.rllib.utils.numpy import convert_to_numpy
-from ray.rllib.utils.test_utils import check_learning_achieved
-from ray.rllib.utils.tf_utils import explained_variance, make_tf_callable
-from ray.rllib.utils.torch_utils import convert_to_torch_tensor
-import scenario_tests
 
 torch, nn = try_import_torch()
 

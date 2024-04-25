@@ -33,7 +33,7 @@
   "count_steps_by": "env_steps",
   "create_env_on_driver": false,
   "custom_async_evaluation_function": null,
-  "custom_eval_function": "<function custom_eval_function at 0x000001760BB1C160>",
+  "custom_eval_function": "<function custom_eval_function at 0x000002053661E8C0>",
   "custom_resources_per_worker": {},
   "delay_between_worker_restarts_s": 60.0,
   "disable_env_checking": false,
@@ -54,7 +54,7 @@
   "episode_lookback_horizon": 1,
   "evaluation_config": {
     "multiagent": {
-      "policy_mapping_fn": "<function policy_mapping_fn at 0x000001760BB1C1F0>"
+      "policy_mapping_fn": "<function policy_mapping_fn at 0x000002053661E950>"
     }
   },
   "evaluation_duration": 10,
@@ -213,7 +213,7 @@
   ],
   "policy_map_cache": -1,
   "policy_map_capacity": 100,
-  "policy_mapping_fn": "<function <lambda> at 0x000001760BB1C430>",
+  "policy_mapping_fn": "<function <lambda> at 0x000002053661EB90>",
   "policy_states_are_swappable": false,
   "postprocess_inputs": false,
   "preprocessor_pref": "deepmind",

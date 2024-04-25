@@ -11,26 +11,7 @@ import numpy as np
 
 """Code based on https://github.com/BStarcheus/open_spiel_coup/blob/master/coup_experiments/scripts/policy_analysis.py"""
 
-# have arg parsing for centralised or decentralised
 
-
-
-
-
-# ray.init(num_cpus=1, local_mode=True)
-# model_path = get_last_agent_path(critic_type="decentralised")
-
-
-# def env_creator():
-#     env = coup_v2.env()
-#     return env
-
-
-# #ray.init(local_mode=True)
-# ModelCatalog.register_custom_model("am_model", ActionMaskModel)
-# register_env("Coup", lambda config: PettingZooEnv(env_creator()))
-
-# policy = Algorithm.from_checkpoint(model_path).get_policy(policy_id="policy")
 
 def get_probs_of_action(env, action, action_mask, policy, extra_fetches):
     
