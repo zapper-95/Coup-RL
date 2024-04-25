@@ -3,11 +3,12 @@ from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.env.wrappers.pettingzoo_env import PettingZooEnv
 from ray.tune.registry import register_env
 from ray.rllib.models import ModelCatalog
-from train_ppo import ActionMaskModel
-from utils import get_last_agent_path, get_nth_latest_model
+from ray.rllib.examples.models.action_mask_model import TorchActionMaskModel as ActionMaskModel
+from models import ActionMaskCentralisedCritic
+from utils import get_experiment_folders, get_sorted_checkpoints, get_checkpoints_folder
 import argparse
-
-
+import os
+import ray
 
 
 
@@ -43,11 +44,29 @@ def print_obs(env, obs):
 
 if __name__ == "__main__":
 
-    checkpoint_path = get_nth_latest_model(2)
-
     parser = argparse.ArgumentParser()
-    parser.add_argument("--render_mode", type=str, default=None, help="Render mode for the environment")
+
+
+    parser.add_argument("--experiment_folder", type=str, default="./ray_results/PPO_decentralised/test_2", help="Path to the experiment folder")
+    parser.add_argument("--model_path", type=str, default=None, help="Path to the model checkpoint")
+    parser.add_argument("--render_mode", type=str, default="human", help="Render mode for the environment")
     args = parser.parse_args()
+
+
+    
+    if not args.model_path:
+        main_folder = os.path.abspath(args.experiment_folder)
+
+        model_paths = get_experiment_folders(main_folder)
+        print(model_paths)
+
+        # take the latest checkpoint
+        checkpoint_path = get_sorted_checkpoints(get_checkpoints_folder(model_paths[-1]))[-1]
+    else:
+        checkpoint_path = get_sorted_checkpoints(get_checkpoints_folder(args.model_path))[-1]
+
+
+
 
     render_mode = args.render_mode
 
@@ -56,10 +75,18 @@ if __name__ == "__main__":
     else:
         env = env_creator()
 
-    ModelCatalog.register_custom_model("am_model", ActionMaskModel)
+
+
+    # register the correct model depending if it is centralised or decentralised
+    if "decentralised" in checkpoint_path:
+        ModelCatalog.register_custom_model("am_model", ActionMaskModel)
+    else:
+        ModelCatalog.register_custom_model("am_model", ActionMaskCentralisedCritic)
+    
     register_env("Coup", lambda config: PettingZooEnv(env_creator()))
     PPO_agent = Algorithm.from_checkpoint(checkpoint_path)
-
+    
+    ray.shutdown()
 
 
     scores = {agent: 0 for agent in env.possible_agents}

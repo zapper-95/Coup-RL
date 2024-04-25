@@ -27,7 +27,6 @@ ACTIONS = [
 ]
 NUM_ITERS = 100
 
-
 def env(render_mode=None):
     """
     The env function often wraps the environment in wrappers by default.
@@ -56,7 +55,6 @@ class CoupEnv(AECEnv):
     def __init__(self, render_mode=None, k_actions=4):
         assert k_actions >= 4
         self.k_actions = k_actions
-
 
         self.render_mode = render_mode
     
@@ -102,10 +100,10 @@ class CoupEnv(AECEnv):
                         len(CARDS),
                         2,
                         2,
-                        14,
+                        13,
                         len(CARDS)+1,
                         len(CARDS)+1,
-                        14,
+                        13,
                         *[len(ACTIONS) for _ in range(self.k_actions)]
                     ]),
                     "action_mask": MultiBinary(len(ACTIONS)),
@@ -170,6 +168,7 @@ class CoupEnv(AECEnv):
         print(f"Turn: P{self.player_turn+1}")
         alive_cards = []
 
+
         print("----------------")
         if display_action:
             print(f"Action: {self.get_action_string(action)}")
@@ -188,6 +187,8 @@ class CoupEnv(AECEnv):
         print("----------------")
         print()
         print()
+
+    
 
 
     def observe(self, agent):
@@ -371,7 +372,6 @@ class CoupEnv(AECEnv):
 
 
         
-        # custom instructions
         self.deck = Deck(CARDS, seed)
         self.state_space = {
             "player_1_card_1": self.deck.draw_card(),
@@ -648,9 +648,6 @@ class CoupEnv(AECEnv):
             self.render(action)
 
 
-
-
-        # cannot end the game if the player has just been assissinated, as they have a chance to counteract or challenge
         reward = self.get_reward(agent, other_agent)
         if self.terminated():
             self.rewards[agent], self.rewards[other_agent] = reward, -reward
