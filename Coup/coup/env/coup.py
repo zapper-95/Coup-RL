@@ -420,7 +420,7 @@ class CoupEnv(AECEnv):
             
 
     def reshuffle_and_deal(self, agent:str, card:str) -> None:
-        """After proving a player indeed has a paticular card, reshuffle the deck and deal them a new card."""
+        """After a player proves to have a card deal them a new card."""
 
         # remove card, from the players hand and give them a new card
         if self.state_space[f"{agent}_card_1"] == card and self.state_space[f"{agent}_card_1_alive"]:
@@ -468,38 +468,27 @@ class CoupEnv(AECEnv):
             
         elif action_str == "challenge" and self.can_challenge(other_player_action):
             if self.get_action_string(other_player_action) != "counteract":
-                    # if a normal action is being challenged
-                
-<<<<<<< HEAD
-                # check whether that action was legal
-                    if self.action_legal(other_agent, other_player_action):
-                        self.set_loose_card(agent)
-=======
-                    # get the card that the player used for the action
-                    card = self.get_action_card(other_agent, other_player_action)
+                # if a normal action is being challenged
+            
+                # get the card that the player used for the action
+                card = self.get_action_card(other_agent, other_player_action)
 
-                    if card != None:
-                        # do not reshuflle and deal if the player had an ambdassdor
-                        if card != "ambassador":
-                            self.reshuffle_and_deal(other_agent, card)
-                        self.loose_card(agent)
+                if card != None:
+                    # do not reshuflle and deal if the player had an ambdassdor
+                    if card != "ambassador":
+                        self.reshuffle_and_deal(other_agent, card)
+                    self.set_loose_card(agent)
 
->>>>>>> reshuffle-proved-card
-                    else:
-                        # if the action was not legal, than reverse its effect
-                        self.reverse_action(other_agent, agent, other_player_action)
-                        self.set_loose_card(other_agent)
+                else:
+                    # if the action was not legal, than reverse its effect
+                    self.reverse_action(other_agent, agent, other_player_action)
+                    self.set_loose_card(other_agent)
             else:
                 # if it is a counteraction being challenged, check whether the counteraction was legal
-<<<<<<< HEAD
-                if self.counteraction_legal(agent_past_action, other_agent):
-                    self.set_loose_card(agent)
-=======
                 card = self.get_counteraction_card(agent_past_action, other_agent)
                 if card != None:
                     self.reshuffle_and_deal(other_agent, card)
-                    self.loose_card(agent)
->>>>>>> reshuffle-proved-card
+                    self.set_loose_card(agent)
                 else:
                     # if it was not legal, let the player play their initial action again (without having to pay again if it was assissinate)
                     if self.get_action_string(agent_past_action) == "assassinate":
@@ -584,29 +573,23 @@ class CoupEnv(AECEnv):
         action = self.get_action_string(action)
         alive_cards = []
 
-        if action != "exchange":
+        if action == "exchange":
+            alive_cards = [self.deck.peek_card(-1), self.deck.peek_card(-2)]
+
+        else:
             for j in range(2):
                 if self.state_space[f"{agent}_card_{j+1}_alive"]:
                     alive_cards.append(self.state_space[f"{agent}_card_{j+1}"])
-        else:
-            # check the player had an ambassador that they could use to exchange
-            temp = [self.deck.draw_bottom_card(), self.deck.draw_bottom_card()]
-            
-            if not self.state_space[f"{agent}_card_1_alive"]:
-                self.deck.add_card(temp.pop())
-            
-            # store a copy and return both cards to the deck
-                
-            alive_cards = temp.copy()
 
-            for card in temp:
-                self.deck.add_card(card)
-            
+        
         # if a valid action that is associated with a card
         if action in self.action_card.keys():
 
             if self.action_card[action] in alive_cards:
                 return self.action_card[action]
+            
+            
+
                 
             
         return None
@@ -629,22 +612,22 @@ class CoupEnv(AECEnv):
     def get_counteraction_card(self, stop_action:int, agent:int) -> str|None:
         """Check if a player legally counteracted the action of another and return the card that did so."""
         
-        # cards of the counteracting player
-        cards = [self.state_space[f"{agent}_card_1"], self.state_space[f"{agent}_card_2"]]
+        cards = []
+        for i in range(2):
+            if self.state_space[f"{agent}_card_{i+1}_alive"]:
+                cards.append(self.state_space[f"{agent}_card_{i+1}"])
 
-        # only keep the first card if it is alive
-        if not self.state_space[f"{agent}_card_1_alive"]:
-            cards.pop(0)
+
+ 
         # check that the action they are stopping can be counteracted
         if self.can_counteract(stop_action):
             # action which is being stopped
             stop_action = self.get_action_string(stop_action)
-
             # check that they have at least one of the required cards to stop the action
-
             for card in cards:
                 if card in self.action_counter_card[stop_action]:
                     return card
+                
         return False
     
 
