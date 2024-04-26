@@ -49,7 +49,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--experiment_folder", type=str, default="./ray_results/PPO_decentralised/test_2", help="Path to the experiment folder")
     parser.add_argument("--model_path", type=str, default=None, help="Path to the model checkpoint")
-    parser.add_argument("--render_mode", type=str, default="human", help="Render mode for the environment")
+    parser.add_argument("--render_mode", type=str, default=None, help="Render mode for the environment")
     args = parser.parse_args()
 
 
