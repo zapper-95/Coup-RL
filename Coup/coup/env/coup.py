@@ -27,12 +27,13 @@ ACTIONS = [
 ]
 NUM_ITERS = 100
 
-def env(render_mode=None):
+def env(render_mode=None, seed=None):
     """
     The env function often wraps the environment in wrappers by default.
     You can find full documentation for these methods
     elsewhere in the developer documentation.
     """
+
     internal_render_mode = render_mode if render_mode != "ansi" else "human"
     env = CoupEnv(render_mode=internal_render_mode)
     # This wrapper is only for environments which print results to the terminal
@@ -52,12 +53,12 @@ class CoupEnv(AECEnv):
         "name": "coup_v2",
     }
 
-    def __init__(self, render_mode=None, k_actions=4):
+    def __init__(self, render_mode=None, k_actions=4, seed=None):
         assert k_actions >= 4
         self.k_actions = k_actions
 
         self.render_mode = render_mode
-    
+
 
         self.action_card = {
             "tax": "duke",
@@ -86,7 +87,7 @@ class CoupEnv(AECEnv):
         self.agent_name_mapping = dict(
             zip(self.agents, list(range(len(self.agents))))
         )
-        self.deck = Deck(CARDS)
+        self.deck = Deck(CARDS, seed)
 
 
         self.action_spaces = {agent: Discrete(len(ACTIONS)) for agent in self.agents}
@@ -671,7 +672,8 @@ class CoupEnv(AECEnv):
 
 class Deck():
     def __init__(self, cards, seed=None) -> None:
-        random.seed(seed)
+        if seed:
+            random.seed(seed)
 
         deck = [element for element in cards for _ in range(3)]
         self.deck  = deck

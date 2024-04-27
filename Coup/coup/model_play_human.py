@@ -1,5 +1,7 @@
 import os
 os.environ['PYTHONWARNINGS'] = "ignore::DeprecationWarning"
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 import coup_v2
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.env.wrappers.pettingzoo_env import PettingZooEnv
@@ -9,7 +11,7 @@ from ray.rllib.examples.models.action_mask_model import TorchActionMaskModel as 
 from models import ActionMaskCentralisedCritic
 from utils import get_experiment_folders, get_sorted_checkpoints, get_checkpoints_folder
 import argparse
-
+import remove_equals
 
 
 
@@ -47,6 +49,8 @@ def print_obs(env, obs):
 if __name__ == "__main__":
 
 
+    remove_equals.fix_dir_names("./ray_results/PPO_decentralised")
+    remove_equals.fix_dir_names("./ray_results/PPO_centralised")
 
     parser = argparse.ArgumentParser()
 
@@ -65,7 +69,9 @@ if __name__ == "__main__":
         # take the latest checkpoint
         checkpoint_path = get_sorted_checkpoints(get_checkpoints_folder(model_paths[-1]))[-1]
     else:
-        checkpoint_path = get_sorted_checkpoints(get_checkpoints_folder(args.model_path))[-1]
+        model_path = os.path.abspath(args.model_path)
+        print(model_path)
+        checkpoint_path = get_sorted_checkpoints(get_checkpoints_folder(model_path))[-1]
 
 
 

@@ -3,7 +3,7 @@ import os
 
 def get_experiment_folders(base_path):
     # Define the path to the results folder
-    results_folder_path = base_path
+    results_folder_path = os.path.abspath(base_path)
 
     # Corrected: Filter only directories for experiments
     experiment_folders = [f for f in glob(os.path.join(results_folder_path, "*")) if os.path.isdir(f)]

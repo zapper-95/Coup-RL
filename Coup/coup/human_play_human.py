@@ -1,8 +1,8 @@
 import coup_v2
 import numpy as np
+import random
 
-
-env = coup_v2.env(render_mode="human")
+env = coup_v2.env(render_mode="human", seed=42)
 env.reset()
 env.render(display_action=False)
 for agent in env.agent_iter():
