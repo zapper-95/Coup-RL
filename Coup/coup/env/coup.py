@@ -578,7 +578,7 @@ class CoupEnv(AECEnv):
 
         else:
             for j in range(2):
-                if self.state_space[f"{agent}_card_{j+1}_alive"]:
+                if self.state_space[f"{agent}_card_{j+1}_alive"] == 1:
                     alive_cards.append(self.state_space[f"{agent}_card_{j+1}"])
 
         
@@ -587,9 +587,7 @@ class CoupEnv(AECEnv):
 
             if self.action_card[action] in alive_cards:
                 return self.action_card[action]
-            
-            
-
+        
                 
             
         return None
@@ -614,9 +612,8 @@ class CoupEnv(AECEnv):
         
         cards = []
         for i in range(2):
-            if self.state_space[f"{agent}_card_{i+1}_alive"]:
+            if self.state_space[f"{agent}_card_{i+1}_alive"] == 1:
                 cards.append(self.state_space[f"{agent}_card_{i+1}"])
-
 
  
         # check that the action they are stopping can be counteracted
@@ -628,7 +625,7 @@ class CoupEnv(AECEnv):
                 if card in self.action_counter_card[stop_action]:
                     return card
                 
-        return False
+        return None
     
 
 

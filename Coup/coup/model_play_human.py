@@ -1,3 +1,5 @@
+import os
+os.environ['PYTHONWARNINGS'] = "ignore::DeprecationWarning"
 import coup_v2
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.env.wrappers.pettingzoo_env import PettingZooEnv
@@ -7,8 +9,8 @@ from ray.rllib.examples.models.action_mask_model import TorchActionMaskModel as 
 from models import ActionMaskCentralisedCritic
 from utils import get_experiment_folders, get_sorted_checkpoints, get_checkpoints_folder
 import argparse
-import os
-import ray
+
+
 
 
 
@@ -44,16 +46,16 @@ def print_obs(env, obs):
 
 if __name__ == "__main__":
 
+
+
     parser = argparse.ArgumentParser()
 
 
     parser.add_argument("--experiment_folder", type=str, default="./ray_results/PPO_decentralised/test_2", help="Path to the experiment folder")
     parser.add_argument("--model_path", type=str, default=None, help="Path to the model checkpoint")
-    parser.add_argument("--render_mode", type=str, default=None, help="Render mode for the environment")
+    parser.add_argument("--render_mode", type=str, default="human", help="Render mode for the environment")
     args = parser.parse_args()
 
-
-    
     if not args.model_path:
         main_folder = os.path.abspath(args.experiment_folder)
 
@@ -84,9 +86,9 @@ if __name__ == "__main__":
         ModelCatalog.register_custom_model("am_model", ActionMaskCentralisedCritic)
     
     register_env("Coup", lambda config: PettingZooEnv(env_creator()))
-    PPO_agent = Algorithm.from_checkpoint(checkpoint_path)
-    
-    ray.shutdown()
+    #PPO_agent = Algorithm.from_checkpoint(checkpoint_path)
+    policy = Algorithm.from_checkpoint(checkpoint_path).get_policy("policy")
+ 
 
 
     scores = {agent: 0 for agent in env.possible_agents}
@@ -115,9 +117,9 @@ if __name__ == "__main__":
 
 
 
-
             for a in env.agents:
-                rewards[a] += env.rewards[a]             
+                rewards[a] += env.rewards[a]   
+          
             if termination or truncation:
                 winner = max(env.rewards, key=env.rewards.get)
                 scores[winner] += 1 # only tracks the largest reward (winner of game)
@@ -138,13 +140,10 @@ if __name__ == "__main__":
                     act = int(input())
                 else:
 
-                    policy = PPO_agent.get_policy(policy_id="policy")
 
                     act, state, extra_fetches = policy.compute_single_action(obs)
 
                     if not render_mode == None:
-                        # get the model that processes observations
-                        model = PPO_agent.get_policy("policy").model
 
                         # get the logits of the action distribution
                         dist_inputs = extra_fetches['action_dist_inputs']
@@ -153,7 +152,7 @@ if __name__ == "__main__":
                         dist_class = policy.dist_class
 
                         # create the action distribution using the logits
-                        action_dist = dist_class(dist_inputs, model)
+                        action_dist = dist_class(dist_inputs, policy.model)
 
 
                         # print value estimate of the state
