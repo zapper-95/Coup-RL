@@ -74,9 +74,7 @@ class CoupEnv(AECEnv):
             "steal": ["ambassador", "captain"],   
         }
 
-        self.final_actions = ["counteract", "challenge"]
-
-        self.no_challenge_actions = ["income", "foreign_aid", "coup", "none", "challenge"]
+        self.no_challenge_actions = ["income", "foreign_aid", "coup", "none", "challenge", "pass", "kill_card_1", "kill_card_2"]
 
         self.player_turn = 0
         self.agents = [f"player_{i+1}" for i in range(2)]
@@ -519,7 +517,6 @@ class CoupEnv(AECEnv):
 
 
 
-
         if action == "steal":
             self.state_space[f"{agent}_coins"] += min(2, self.state_space[f"{other_agent}_coins"])
             self.state_space[f"{other_agent}_coins"] -= min(2, self.state_space[f"{other_agent}_coins"])
@@ -563,11 +560,6 @@ class CoupEnv(AECEnv):
                     + int(self.state_space[f"{other_agent}_card_2_alive"])
                     )
 
-    def get_current_winner(self) -> str:
-        if self.state_space["player_1_card_2_alive"]:
-            return "player_1"
-        else:
-            return "player_2"
     
     def get_action_card(self, agent:int, action:int) -> str|None:
         """Check if an action of given player is legal for the cards they have. If so, return the card they used."""
