@@ -43,16 +43,21 @@ ray.init(local_mode=True)
 ModelCatalog.register_custom_model("am_model", ActionMaskModel)
 register_env("Coup", lambda _: PettingZooEnv(env_creator()))
 main_folder = os.path.abspath(args.model_folder)
-policies = []
 
-for model_path in get_experiment_folders(main_folder):
-    try:
-        path = get_sorted_checkpoints(get_checkpoints_folder(model_path))[-1]
-        policies.append(Algorithm.from_checkpoint(path).get_policy(policy_id="policy"))
-    except:
-        print(f"No checkpoint found for {model_path}")
+policy = None
 
-policy = policies[-1]
+experiment_folders = get_experiment_folders(main_folder)
+
+print(experiment_folders)
+path = experiment_folders[args.model_number]
+print(path)
+try:
+    policy = Algorithm.from_checkpoint(get_checkpoints_folder(path)[-1]).get_policy(policy_id="policy") 
+except:
+    print(f"Model number {args.model_number} not found in {path}")
+    exit()
+
+
 env = coup_v2.env(render_mode="human", seed=42)
 
 while True:
