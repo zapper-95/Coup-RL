@@ -1,181 +1,77 @@
 import os
-os.environ['PYTHONWARNINGS'] = "ignore::DeprecationWarning"
-import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning)
+import argparse
+import ray
 import coup_v2
-from ray.rllib.algorithms.algorithm import Algorithm
-from ray.rllib.env.wrappers.pettingzoo_env import PettingZooEnv
-from ray.tune.registry import register_env
 from ray.rllib.models import ModelCatalog
 from ray.rllib.examples.models.action_mask_model import TorchActionMaskModel as ActionMaskModel
-from models import ActionMaskCentralisedCritic
+from ray.rllib.env.wrappers.pettingzoo_env import PettingZooEnv
+from ray.rllib.algorithms.algorithm import Algorithm
+from ray.tune.registry import register_env
 from utils import get_experiment_folders, get_sorted_checkpoints, get_checkpoints_folder
-import argparse
-import remove_equals
 
+def print_action_distribution(policy, action_mask, env, extra_fetches):
+    dist_class = policy.dist_class
+    action_dist = dist_class(extra_fetches['action_dist_inputs'], policy.model)
+    probs = ["{:.2f}".format(value) for value in action_dist.dist.probs.tolist()]
+    print(f"Predicted value: {extra_fetches['vf_preds']} \nProbabilities:")
+    for i, prob in enumerate(probs):
+        if action_mask[i] == 1:
+            print(f"{env.get_action_string(i)} : {prob}")
 
+def print_avaliable_actions(action_mask, env):
+    print("Available actions:")
+    for i in range(len(action_mask)):
+        if action_mask[i] == 1:
+            print(f"{i} {env.get_action_string(i)}")
 
+def print_new_game():
+    print("--------------------")
+    print("New game")
+    print("--------------------")
 
-def env_creator(render_mode=None):
-    env = coup_v2.env(render_mode=render_mode)
-    return env
+def env_creator():
+    return coup_v2.env()
 
+# Argument parsing
+parser = argparse.ArgumentParser(description="Run a RLlib model with a custom environment")
+parser.add_argument("--model_folder", type=str, default="./ray_results/PPO_decentralised/", help="Folder containing model checkpoints")
+parser.add_argument("--model_number", type=int, default=-1, help="Number of the model to load")
+args = parser.parse_args()
 
+ray.shutdown()
+ray.init(local_mode=True)
+ModelCatalog.register_custom_model("am_model", ActionMaskModel)
+register_env("Coup", lambda _: PettingZooEnv(env_creator()))
+main_folder = os.path.abspath(args.model_folder)
+policies = []
 
-def print_obs(env, obs):
-    print("Card 1: ", env.get_card(obs[0]))
-    print("Card 2: ", env.get_card(obs[1]))
-    print("Card 1 Alive: ", obs[2])
-    print("Card 2 Alive: ", obs[3])
-    print("Coins: ", obs[4])
-    
-    print()
-    if obs[5] == 5:
-        print(f"Agents Card 1: (Hidden)")
-    else:
-        print(f"Agents Card 1: {env.get_card(obs[5])}")
+for model_path in get_experiment_folders(main_folder):
+    try:
+        path = get_sorted_checkpoints(get_checkpoints_folder(model_path))[-1]
+        policies.append(Algorithm.from_checkpoint(path).get_policy(policy_id="policy"))
+    except:
+        print(f"No checkpoint found for {model_path}")
 
-    if obs[6] == 5:
-        print(f"Agents Card 2: (Hidden)")
-    else:
-        print(f"Agents Card 2: {env.get_card(obs[6])}")
+policy = policies[-1]
+env = coup_v2.env(render_mode="human", seed=42)
 
-    print(f"Agents Coins: {obs[7]}")
-    print("-------------------")
-
-
-
-
-if __name__ == "__main__":
-
-
-    remove_equals.fix_dir_names("./ray_results/PPO_decentralised")
-    remove_equals.fix_dir_names("./ray_results/PPO_centralised")
-
-    parser = argparse.ArgumentParser()
-
-
-    parser.add_argument("--experiment_folder", type=str, default="./ray_results/PPO_decentralised/test_2", help="Path to the experiment folder")
-    parser.add_argument("--model_path", type=str, default=None, help="Path to the model checkpoint")
-    parser.add_argument("--render_mode", type=str, default="human", help="Render mode for the environment")
-    args = parser.parse_args()
-
-    if not args.model_path:
-        main_folder = os.path.abspath(args.experiment_folder)
-
-        model_paths = get_experiment_folders(main_folder)
-        print(model_paths)
-
-        # take the latest checkpoint
-        checkpoint_path = get_sorted_checkpoints(get_checkpoints_folder(model_paths[-1]))[-1]
-    else:
-        model_path = os.path.abspath(args.model_path)
-        print(model_path)
-        checkpoint_path = get_sorted_checkpoints(get_checkpoints_folder(model_path))[-1]
-
-
-
-
-    render_mode = args.render_mode
-
-    if render_mode:
-        env = env_creator(render_mode)
-    else:
-        env = env_creator()
-
-
-
-    # register the correct model depending if it is centralised or decentralised
-    if "decentralised" in checkpoint_path:
-        ModelCatalog.register_custom_model("am_model", ActionMaskModel)
-    else:
-        ModelCatalog.register_custom_model("am_model", ActionMaskCentralisedCritic)
-    
-    register_env("Coup", lambda config: PettingZooEnv(env_creator()))
-    #PPO_agent = Algorithm.from_checkpoint(checkpoint_path)
-    policy = Algorithm.from_checkpoint(checkpoint_path).get_policy("policy")
- 
-
-
-    scores = {agent: 0 for agent in env.possible_agents}
-    total_rewards = {agent: 0 for agent in env.possible_agents}
-    round_rewards = []
-
-    while True:
-        print("----- New Game -----")
-        print("Player 1: Human")
-        print("Player 2: AI")
-        print("-------------------")
-        env.reset()
-
-        env.action_space(env.possible_agents[0])
-        
-        if render_mode:
-            env.render(display_action=False)
-
-        rewards = {agent: 0 for agent in env.possible_agents}
-
-        for agent in env.agent_iter():
-            obs, reward, termination, truncation, info = env.last()
-
-            # Separate observation and action mask
-            observation, action_mask = obs.values()
-
-
-
-            for a in env.agents:
-                rewards[a] += env.rewards[a]   
-          
-            if termination or truncation:
-                winner = max(env.rewards, key=env.rewards.get)
-                scores[winner] += 1 # only tracks the largest reward (winner of game)
-                # Also track negative and positive rewards (penalizes illegal moves)
-                for a in env.possible_agents:
-                    total_rewards[a] += rewards[a]
-                # List of rewards by round, for reference
-                round_rewards.append(rewards)
-                break
-            else:
-                if agent == env.possible_agents[0]:
-                    if not render_mode:
-                        print_obs(env, observation)
-
-                    for i in range(len(action_mask)):
-                        if action_mask[i] == 1:
-                            print(f"Action {i}: {env.get_action_string(i)}")
-                    act = int(input())
-                else:
-
-
-                    act, state, extra_fetches = policy.compute_single_action(obs)
-
-                    if not render_mode == None:
-
-                        # get the logits of the action distribution
-                        dist_inputs = extra_fetches['action_dist_inputs']
-
-                        # get the action distribution class
-                        dist_class = policy.dist_class
-
-                        # create the action distribution using the logits
-                        action_dist = dist_class(dist_inputs, policy.model)
-
-
-                        # print value estimate of the state
-                        print(f"Predicted value: {extra_fetches['vf_preds']} \n")
-
-                        # print the action probabilities
-                        print("Probabilities:")
-                        probs = action_dist.dist.probs
-                        probs = ["{:.2f}".format(value) for value in probs.tolist()]
-                        
-                        for i in range(len(action_mask)):
-                            if action_mask[i] == 1:
-                                print(f"{env.get_action_string(i)} : {probs[i]}")
-
-            if not render_mode:
-                print("-------------------")
-                print("ACTION: ", env.get_action_string(act))
-                print("-------------------")  
-            env.step(act)
+while True:
+    print_new_game()
+    env.reset()
+    env.render(display_action=False)
+    for agent in env.agent_iter():
+        observation, reward, termination, truncation, info = env.last()
+        action_mask = observation["action_mask"]
+        if termination or truncation:
+            break
+        elif agent == "player_1":
+            act, state, extra_fetches = policy.compute_single_action(observation, action_mask)
+            print_action_distribution(policy, action_mask, env, extra_fetches)
+        else:
+            print_avaliable_actions(action_mask, env)
+            act = int(input("Enter action: "))
+            while act not in range(len(action_mask)) or action_mask[act] == 0:
+                print("Invalid action. Try again.")
+                act = int(input("Enter action: "))
+        env.step(act)
     env.close()
